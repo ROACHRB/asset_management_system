@@ -1,6 +1,17 @@
 <?php
 include_once "../../includes/header.php";
 
+// Check permission
+if($_SESSION['role'] != 'admin') {
+    echo '<div class="alert alert-danger">Access denied.</div>';
+    include_once "../../includes/footer.php";
+    exit;
+}
+
+// Get roles list
+$roles_query = "SELECT * FROM roles ORDER BY role_name";
+$roles_result = mysqli_query($conn, $roles_query);
+
 // Process form submission
 if($_SERVER["REQUEST_METHOD"] == "POST") {
     $error = "";
@@ -19,6 +30,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST") {
         if(mysqli_stmt_num_rows($stmt) > 0) {
             $error = "This username is already taken.";
         }
+        mysqli_stmt_close($stmt);
     }
     
     // Validate password
@@ -37,8 +49,8 @@ if($_SERVER["REQUEST_METHOD"] == "POST") {
     
     // If no errors, proceed with insertion
     if(empty($error)) {
-        $sql = "INSERT INTO users (username, password, full_name, email, role, department) 
-                VALUES (?, ?, ?, ?, ?, ?)";
+        $sql = "INSERT INTO users (username, password, full_name, email, role, department, status) 
+                VALUES (?, ?, ?, ?, ?, ?, 'active')";
         
         if($stmt = mysqli_prepare($conn, $sql)) {
             // Hash the password
@@ -55,6 +67,18 @@ if($_SERVER["REQUEST_METHOD"] == "POST") {
             );
             
             if(mysqli_stmt_execute($stmt)) {
+                // Log the action
+                $new_user_id = mysqli_insert_id($conn);
+                $log_query = "INSERT INTO user_activity_logs (user_id, activity_type, description, ip_address) 
+                             VALUES (?, 'user_created', ?, ?)";
+                $log_stmt = mysqli_prepare($conn, $log_query);
+                mysqli_stmt_bind_param($log_stmt, "iss", 
+                    $_SESSION['user_id'],
+                    "Created new user: " . trim($_POST["username"]),
+                    $_SERVER['REMOTE_ADDR']
+                );
+                mysqli_stmt_execute($log_stmt);
+                
                 // Redirect to user list
                 header("location: index.php");
                 exit();
@@ -117,9 +141,12 @@ if($_SERVER["REQUEST_METHOD"] == "POST") {
                 <div class="form-group col-md-6">
                     <label for="role" class="required-field">Role</label>
                     <select class="form-control" id="role" name="role" required>
-                        <option value="user">User</option>
-                        <option value="staff">Staff</option>
-                        <option value="admin">Administrator</option>
+                        <option value="">Select Role</option>
+                        <?php while($role = mysqli_fetch_assoc($roles_result)): ?>
+                            <option value="<?php echo $role['role_name']; ?>">
+                                <?php echo ucfirst($role['role_name']); ?>
+                            </option>
+                        <?php endwhile; ?>
                     </select>
                 </div>
                 <div class="form-group col-md-6">
