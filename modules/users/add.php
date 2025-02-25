@@ -1,4 +1,7 @@
 <?php
+// Start output buffering at the very beginning
+ob_start();
+
 include_once "../../includes/header.php";
 
 // Check permission
@@ -21,9 +24,10 @@ if($_SERVER["REQUEST_METHOD"] == "POST") {
         $error = "Please enter a username.";
     } else {
         // Check if username exists
+        $username = trim($_POST["username"]);
         $sql = "SELECT user_id FROM users WHERE username = ?";
         $stmt = mysqli_prepare($conn, $sql);
-        mysqli_stmt_bind_param($stmt, "s", trim($_POST["username"]));
+        mysqli_stmt_bind_param($stmt, "s", $username);
         mysqli_stmt_execute($stmt);
         mysqli_stmt_store_result($stmt);
         
@@ -53,17 +57,22 @@ if($_SERVER["REQUEST_METHOD"] == "POST") {
                 VALUES (?, ?, ?, ?, ?, ?, 'active')";
         
         if($stmt = mysqli_prepare($conn, $sql)) {
-            // Hash the password
+            // Prepare variables
+            $username = trim($_POST["username"]);
             $param_password = password_hash(trim($_POST["password"]), PASSWORD_DEFAULT);
+            $full_name = trim($_POST["full_name"]);
+            $email = trim($_POST["email"]);
+            $role = $_POST["role"];
+            $department = !empty($_POST["department"]) ? trim($_POST["department"]) : null;
             
             // Bind parameters
             mysqli_stmt_bind_param($stmt, "ssssss", 
-                trim($_POST["username"]),
+                $username,
                 $param_password,
-                trim($_POST["full_name"]),
-                trim($_POST["email"]),
-                $_POST["role"],
-                !empty($_POST["department"]) ? trim($_POST["department"]) : null
+                $full_name,
+                $email,
+                $role,
+                $department
             );
             
             if(mysqli_stmt_execute($stmt)) {
@@ -72,14 +81,18 @@ if($_SERVER["REQUEST_METHOD"] == "POST") {
                 $log_query = "INSERT INTO user_activity_logs (user_id, activity_type, description, ip_address) 
                              VALUES (?, 'user_created', ?, ?)";
                 $log_stmt = mysqli_prepare($conn, $log_query);
+                $current_user_id = $_SESSION['user_id'];
+                $description = "Created new user: " . $username;
+                $ip_address = $_SERVER['REMOTE_ADDR'];
+                
                 mysqli_stmt_bind_param($log_stmt, "iss", 
-                    $_SESSION['user_id'],
-                    "Created new user: " . trim($_POST["username"]),
-                    $_SERVER['REMOTE_ADDR']
+                    $current_user_id,
+                    $description,
+                    $ip_address
                 );
                 mysqli_stmt_execute($log_stmt);
                 
-                // Redirect to user list
+                // Redirect to user list - this will now work correctly with output buffering
                 header("location: index.php");
                 exit();
             } else {
@@ -142,7 +155,10 @@ if($_SERVER["REQUEST_METHOD"] == "POST") {
                     <label for="role" class="required-field">Role</label>
                     <select class="form-control" id="role" name="role" required>
                         <option value="">Select Role</option>
-                        <?php while($role = mysqli_fetch_assoc($roles_result)): ?>
+                        <?php 
+                        mysqli_data_seek($roles_result, 0);
+                        while($role = mysqli_fetch_assoc($roles_result)): 
+                        ?>
                             <option value="<?php echo $role['role_name']; ?>">
                                 <?php echo ucfirst($role['role_name']); ?>
                             </option>
@@ -209,4 +225,8 @@ $(document).ready(function() {
 });
 </script>
 
-<?php include_once "../../includes/footer.php"; ?>
+<?php 
+include_once "../../includes/footer.php"; 
+// End and flush the output buffer
+ob_end_flush();
+?>

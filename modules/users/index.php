@@ -8,6 +8,22 @@ if($_SESSION['role'] != 'admin') {
     exit;
 }
 
+// Display success/warning/error messages
+if(isset($_SESSION['success']) && !empty($_SESSION['success'])) {
+    echo '<div class="alert alert-success">' . $_SESSION['success'] . '</div>';
+    unset($_SESSION['success']);
+}
+
+if(isset($_SESSION['warning']) && !empty($_SESSION['warning'])) {
+    echo '<div class="alert alert-warning">' . $_SESSION['warning'] . '</div>';
+    unset($_SESSION['warning']);
+}
+
+if(isset($_SESSION['error']) && !empty($_SESSION['error'])) {
+    echo '<div class="alert alert-danger">' . $_SESSION['error'] . '</div>';
+    unset($_SESSION['error']);
+}
+
 // Get users list with roles and status
 $query = "SELECT u.*, 
           (SELECT COUNT(*) FROM asset_assignments 
@@ -221,13 +237,13 @@ $result = mysqli_query($conn, $query);
                                         <i class="fas fa-user-check"></i>
                                     </a>
                                     <?php endif; ?>
-                                    <a href="delete.php?id=<?php echo $row['user_id']; ?>" 
-                                       class="btn btn-sm btn-danger confirm-action"
-                                       data-message="Are you sure you want to delete this user? This action cannot be undone."
+                                    <a href="delete_user.php?id=<?php echo $row['user_id']; ?>" 
+                                       class="btn btn-sm btn-danger"
                                        title="Delete User">
                                         <i class="fas fa-trash"></i>
                                     </a>
                                 <?php endif; ?>
+                                
                             </div>
                         </td>
                     </tr>

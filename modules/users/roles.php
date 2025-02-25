@@ -1,20 +1,17 @@
 <?php
+// File: modules/users/roles.php
 include_once "../../includes/header.php";
+//include_once "../../includes/auth_functions.php";
 
-// Check permission
-if($_SESSION['role'] != 'admin') {
-    echo '<div class="alert alert-danger">Access denied.</div>';
-    include_once "../../includes/footer.php";
-    exit;
-}
+// Check permission using the new auth system
+require_permission('manage_users');
 
 // Get roles with permission counts
 $roles_query = "SELECT r.*, 
                 COUNT(DISTINCT rp.permission_id) as permission_count,
-                COUNT(DISTINCT u.user_id) as user_count
+                (SELECT COUNT(*) FROM users u WHERE u.role = r.role_name) as user_count
                 FROM roles r
                 LEFT JOIN role_permissions rp ON r.role_id = rp.role_id
-                LEFT JOIN users u ON r.role_name = u.role
                 GROUP BY r.role_id
                 ORDER BY r.role_name";
 $roles_result = mysqli_query($conn, $roles_query);
@@ -56,31 +53,44 @@ if($_SERVER["REQUEST_METHOD"] == "POST") {
                     }
                     
                     mysqli_commit($conn);
-                    $success = "Role permissions updated successfully.";
+                    $_SESSION['success'] = "Role permissions updated successfully.";
+                    log_activity('update_permissions', "Updated permissions for role ID: $role_id");
                     
                 } catch (Exception $e) {
                     mysqli_rollback($conn);
-                    $error = "Error updating permissions: " . $e->getMessage();
+                    $_SESSION['error'] = "Error updating permissions: " . $e->getMessage();
                 }
                 break;
                 
             case 'add_role':
-                $role_name = trim($_POST['role_name']);
+                $role_name = strtolower(trim($_POST['role_name'])); // Make lowercase for consistency
                 $description = trim($_POST['description']);
                 
                 if(empty($role_name)) {
-                    $error = "Role name is required.";
+                    $_SESSION['error'] = "Role name is required.";
                 } else {
-                    $sql = "INSERT INTO roles (role_name, description) VALUES (?, ?)";
-                    $stmt = mysqli_prepare($conn, $sql);
-                    mysqli_stmt_bind_param($stmt, "ss", $role_name, $description);
+                    // Check if role name already exists
+                    $check_sql = "SELECT 1 FROM roles WHERE LOWER(role_name) = ?";
+                    $stmt = mysqli_prepare($conn, $check_sql);
+                    mysqli_stmt_bind_param($stmt, "s", $role_name);
+                    mysqli_stmt_execute($stmt);
+                    $result = mysqli_stmt_get_result($stmt);
                     
-                    if(mysqli_stmt_execute($stmt)) {
-                        $success = "New role added successfully.";
-                        header("Location: roles.php");
-                        exit();
+                    if(mysqli_num_rows($result) > 0) {
+                        $_SESSION['error'] = "A role with this name already exists.";
                     } else {
-                        $error = "Error adding role: " . mysqli_error($conn);
+                        $sql = "INSERT INTO roles (role_name, description) VALUES (?, ?)";
+                        $stmt = mysqli_prepare($conn, $sql);
+                        mysqli_stmt_bind_param($stmt, "ss", $role_name, $description);
+                        
+                        if(mysqli_stmt_execute($stmt)) {
+                            $_SESSION['success'] = "New role added successfully.";
+                            log_activity('add_role', "Added new role: $role_name");
+                            header("Location: roles.php");
+                            exit();
+                        } else {
+                            $_SESSION['error'] = "Error adding role: " . mysqli_error($conn);
+                        }
                     }
                 }
                 break;
@@ -101,12 +111,12 @@ if($_SERVER["REQUEST_METHOD"] == "POST") {
     </div>
 </div>
 
-<?php if(isset($error)): ?>
-<div class="alert alert-danger"><?php echo $error; ?></div>
+<?php if(isset($_SESSION['error'])): ?>
+<div class="alert alert-danger"><?php echo $_SESSION['error']; unset($_SESSION['error']); ?></div>
 <?php endif; ?>
 
-<?php if(isset($success)): ?>
-<div class="alert alert-success"><?php echo $success; ?></div>
+<?php if(isset($_SESSION['success'])): ?>
+<div class="alert alert-success"><?php echo $_SESSION['success']; unset($_SESSION['success']); ?></div>
 <?php endif; ?>
 
 <!-- Roles List -->

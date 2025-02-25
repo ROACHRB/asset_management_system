@@ -11,6 +11,9 @@ if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true){
 
 // Include database configuration
 require_once $_SERVER['DOCUMENT_ROOT'] . '/asset_management_system/config/database.php';
+
+// Include functions
+require_once $_SERVER['DOCUMENT_ROOT'] . '/asset_management_system/includes/functions.php';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -32,14 +35,15 @@ require_once $_SERVER['DOCUMENT_ROOT'] . '/asset_management_system/config/databa
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav mr-auto">
-                <!-- Dashboard -->
+                <!-- Dashboard - accessible to all -->
                 <li class="nav-item">
                     <a class="nav-link" href="/asset_management_system/index.php">
                         <i class="fas fa-tachometer-alt mr-1"></i>Dashboard
                     </a>
                 </li>
 
-                <!-- Inventory Management -->
+                <!-- Inventory Management - requires manage_assets permission -->
+                <?php if(has_permission('manage_assets')): ?>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="inventoryDropdown" role="button" data-toggle="dropdown">
                         <i class="fas fa-boxes mr-1"></i>Inventory
@@ -56,8 +60,10 @@ require_once $_SERVER['DOCUMENT_ROOT'] . '/asset_management_system/config/databa
                         </a>
                     </div>
                 </li>
+                <?php endif; ?>
 
-                <!-- Receiving -->
+                <!-- Receiving - requires manage_assets permission -->
+                <?php if(has_permission('manage_assets')): ?>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="receivingDropdown" role="button" data-toggle="dropdown">
                         <i class="fas fa-truck-loading mr-1"></i>Receiving
@@ -71,8 +77,10 @@ require_once $_SERVER['DOCUMENT_ROOT'] . '/asset_management_system/config/databa
                         </a>
                     </div>
                 </li>
+                <?php endif; ?>
 
-                <!-- Asset Assignment -->
+                <!-- Asset Assignment - requires manage_assignments permission -->
+                <?php if(has_permission('manage_assignments')): ?>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="assignmentDropdown" role="button" data-toggle="dropdown">
                         <i class="fas fa-hand-holding mr-1"></i>Assignments
@@ -89,8 +97,10 @@ require_once $_SERVER['DOCUMENT_ROOT'] . '/asset_management_system/config/databa
                         </a>
                     </div>
                 </li>
+                <?php endif; ?>
 
-                <!-- Storage Management -->
+                <!-- Storage Management - requires manage_locations permission -->
+                <?php if(has_permission('manage_locations')): ?>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="storageDropdown" role="button" data-toggle="dropdown">
                         <i class="fas fa-warehouse mr-1"></i>Storage
@@ -104,28 +114,34 @@ require_once $_SERVER['DOCUMENT_ROOT'] . '/asset_management_system/config/databa
                         </a>
                     </div>
                 </li>
+                <?php endif; ?>
 
-                <!-- Disposal Management -->
-<li class="nav-item dropdown">
-    <a class="nav-link dropdown-toggle" href="#" id="disposalDropdown" role="button" data-toggle="dropdown">
-        <i class="fas fa-trash-alt mr-1"></i>Disposal
-    </a>
-    <div class="dropdown-menu">
-        <a class="dropdown-item" href="/asset_management_system/modules/disposal/index.php">
-            <i class="fas fa-list mr-2"></i>View Disposals
-        </a>
-        <a class="dropdown-item" href="/asset_management_system/modules/disposal/request.php">
-            <i class="fas fa-plus mr-2"></i>New Disposal Request
-        </a>
-        <?php if($_SESSION['role'] == 'admin'): ?>
-        <a class="dropdown-item" href="/asset_management_system/modules/disposal/approve.php">
-            <i class="fas fa-check-circle mr-2"></i>Approve Requests
-        </a>
-        <?php endif; ?>
-    </div>
-</li>
+                <!-- Disposal Management - viewing requires view_only, requesting requires manage_assets -->
+                <?php if(has_permission('view_only')): ?>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="disposalDropdown" role="button" data-toggle="dropdown">
+                        <i class="fas fa-trash-alt mr-1"></i>Disposal
+                    </a>
+                    <div class="dropdown-menu">
+                        <a class="dropdown-item" href="/asset_management_system/modules/disposal/index.php">
+                            <i class="fas fa-list mr-2"></i>View Disposals
+                        </a>
+                        <?php if(has_permission('manage_assets')): ?>
+                        <a class="dropdown-item" href="/asset_management_system/modules/disposal/request.php">
+                            <i class="fas fa-plus mr-2"></i>New Disposal Request
+                        </a>
+                        <?php endif; ?>
+                        <?php if(has_permission('approve_disposals')): ?>
+                        <a class="dropdown-item" href="/asset_management_system/modules/disposal/approve.php">
+                            <i class="fas fa-check-circle mr-2"></i>Approve Requests
+                        </a>
+                        <?php endif; ?>
+                    </div>
+                </li>
+                <?php endif; ?>
 
-                <!-- Reports -->
+                <!-- Reports - requires generate_reports permission -->
+                <?php if(has_permission('generate_reports')): ?>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="reportsDropdown" role="button" data-toggle="dropdown">
                         <i class="fas fa-chart-bar mr-1"></i>Reports
@@ -142,9 +158,27 @@ require_once $_SERVER['DOCUMENT_ROOT'] . '/asset_management_system/config/databa
                         </a>
                     </div>
                 </li>
+                <?php endif; ?>
 
-                <!-- User Management (Admin Only) -->
-                <?php if(isset($_SESSION['role']) && $_SESSION['role'] == 'admin'): ?>
+                <!-- Audits - requires conduct_audits permission -->
+                <?php if(has_permission('conduct_audits')): ?>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="auditsDropdown" role="button" data-toggle="dropdown">
+                        <i class="fas fa-clipboard-check mr-1"></i>Audits
+                    </a>
+                    <div class="dropdown-menu">
+                        <a class="dropdown-item" href="/asset_management_system/modules/audits/index.php">
+                            <i class="fas fa-list mr-2"></i>View Audits
+                        </a>
+                        <a class="dropdown-item" href="/asset_management_system/modules/audits/new.php">
+                            <i class="fas fa-plus mr-2"></i>New Audit
+                        </a>
+                    </div>
+                </li>
+                <?php endif; ?>
+
+                <!-- User Management - requires manage_users permission -->
+                <?php if(has_permission('manage_users')): ?>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="usersDropdown" role="button" data-toggle="dropdown">
                         <i class="fas fa-users-cog mr-1"></i>Users
@@ -156,17 +190,27 @@ require_once $_SERVER['DOCUMENT_ROOT'] . '/asset_management_system/config/databa
                         <a class="dropdown-item" href="/asset_management_system/modules/users/add.php">
                             <i class="fas fa-user-plus mr-2"></i>Add New User
                         </a>
+                        <a class="dropdown-item" href="/asset_management_system/modules/users/roles.php">
+                            <i class="fas fa-user-shield mr-2"></i>Manage Roles
+                        </a>
                     </div>
                 </li>
                 <?php endif; ?>
             </ul>
 
-            <!-- User Profile Dropdown -->
+            <!-- User Profile Dropdown - available to all users -->
             <ul class="navbar-nav">
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-toggle="dropdown">
                         <i class="fas fa-user-circle mr-1"></i>
                         <?php echo htmlspecialchars($_SESSION["username"]); ?>
+                        <span class="badge badge-<?php 
+                            echo ($_SESSION['role'] == 'admin' ? 'danger' : 
+                                ($_SESSION['role'] == 'manager' ? 'warning' : 
+                                ($_SESSION['role'] == 'staff' ? 'info' : 'secondary'))); 
+                        ?> ml-1">
+                            <?php echo ucfirst($_SESSION['role']); ?>
+                        </span>
                     </a>
                     <div class="dropdown-menu dropdown-menu-right">
                         <a class="dropdown-item" href="/asset_management_system/modules/users/profile.php">
@@ -183,4 +227,20 @@ require_once $_SERVER['DOCUMENT_ROOT'] . '/asset_management_system/config/databa
     </nav>
     
     <div class="container-fluid mt-4">
+        <!-- Display error messages if any -->
+        <?php if(isset($_SESSION['error'])): ?>
+        <div class="alert alert-danger alert-dismissible fade show">
+            <i class="fas fa-exclamation-triangle mr-2"></i><?php echo $_SESSION['error']; ?>
+            <button type="button" class="close" data-dismiss="alert">&times;</button>
+        </div>
+        <?php unset($_SESSION['error']); endif; ?>
+        
+        <!-- Display success messages if any -->
+        <?php if(isset($_SESSION['success'])): ?>
+        <div class="alert alert-success alert-dismissible fade show">
+            <i class="fas fa-check-circle mr-2"></i><?php echo $_SESSION['success']; ?>
+            <button type="button" class="close" data-dismiss="alert">&times;</button>
+        </div>
+        <?php unset($_SESSION['success']); endif; ?>
+        
         <!-- Page content will be inserted here -->
