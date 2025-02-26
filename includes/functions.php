@@ -304,13 +304,40 @@ function format_currency($amount) {
 function get_category_options($conn, $selected_id = null) {
     $output = '<option value="">-- Select Category --</option>';
     
+    // Define default categories
+    $default_categories = [
+        'Computer Equipment',
+        'Office Furniture',
+        'Networking Equipment',
+        'Mobile Devices',
+        'Peripherals'
+    ];
+    
+    // Check if each default category exists; if not, insert it
+    foreach ($default_categories as $category_name) {
+        $check_sql = "SELECT category_id FROM categories WHERE category_name = ?";
+        $check_stmt = mysqli_prepare($conn, $check_sql);
+        mysqli_stmt_bind_param($check_stmt, "s", $category_name);
+        mysqli_stmt_execute($check_stmt);
+        mysqli_stmt_store_result($check_stmt);
+        
+        if (mysqli_stmt_num_rows($check_stmt) == 0) {
+            // Category doesn't exist, insert it
+            $insert_sql = "INSERT INTO categories (category_name) VALUES (?)";
+            $insert_stmt = mysqli_prepare($conn, $insert_sql);
+            mysqli_stmt_bind_param($insert_stmt, "s", $category_name);
+            mysqli_stmt_execute($insert_stmt);
+        }
+    }
+    
+    // Now get all categories from database
     $sql = "SELECT category_id, category_name FROM categories ORDER BY category_name";
     $result = mysqli_query($conn, $sql);
     
     while($row = mysqli_fetch_assoc($result)) {
         $selected = ($selected_id == $row['category_id']) ? 'selected' : '';
         $output .= '<option value="' . $row['category_id'] . '" ' . $selected . '>' . 
-                   htmlspecialchars($row['category_name']) . '</option>';
+                  htmlspecialchars($row['category_name']) . '</option>';
     }
     
     return $output;
@@ -326,6 +353,32 @@ function get_category_options($conn, $selected_id = null) {
 function get_location_options($conn, $selected_id = null) {
     $output = '<option value="">-- Select Location --</option>';
     
+    // Define default locations
+    $default_locations = [
+        ['building' => 'Main Building', 'room' => ''],
+        ['building' => 'South Campus', 'room' => ''],
+        ['building' => 'San Jose Branch', 'room' => '']
+    ];
+    
+    // Check if each default location exists; if not, insert it
+    foreach ($default_locations as $location) {
+        $check_sql = "SELECT location_id FROM locations WHERE building = ? AND (room = ? OR (room IS NULL AND ? = ''))";
+        $check_stmt = mysqli_prepare($conn, $check_sql);
+        mysqli_stmt_bind_param($check_stmt, "sss", $location['building'], $location['room'], $location['room']);
+        mysqli_stmt_execute($check_stmt);
+        mysqli_stmt_store_result($check_stmt);
+        
+        if (mysqli_stmt_num_rows($check_stmt) == 0) {
+            // Location doesn't exist, insert it
+            $insert_sql = "INSERT INTO locations (building, room) VALUES (?, ?)";
+            $insert_stmt = mysqli_prepare($conn, $insert_sql);
+            $room_value = empty($location['room']) ? NULL : $location['room'];
+            mysqli_stmt_bind_param($insert_stmt, "ss", $location['building'], $room_value);
+            mysqli_stmt_execute($insert_stmt);
+        }
+    }
+    
+    // Now get all locations from database
     $sql = "SELECT location_id, building, room FROM locations ORDER BY building, room";
     $result = mysqli_query($conn, $sql);
     

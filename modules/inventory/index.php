@@ -3,12 +3,36 @@
 // Include header
 include_once "../../includes/header.php";
 
-// Filter by status if provided
-$status_filter = "";
-$filter_value = "";
+// Filter parameters
+$where_clauses = [];
+$params = [];
+$types = "";
+
+// Status filter
 if(isset($_GET['status']) && !empty($_GET['status'])) {
-    $status_filter = "WHERE a.status = ?";
-    $filter_value = $_GET['status'];
+    $where_clauses[] = "a.status = ?";
+    $params[] = $_GET['status'];
+    $types .= "s";
+}
+
+// Category filter
+if(isset($_GET['category']) && !empty($_GET['category'])) {
+    $where_clauses[] = "a.category_id = ?";
+    $params[] = $_GET['category'];
+    $types .= "i";
+}
+
+// Location filter
+if(isset($_GET['location']) && !empty($_GET['location'])) {
+    $where_clauses[] = "a.location_id = ?";
+    $params[] = $_GET['location'];
+    $types .= "i";
+}
+
+// Build WHERE clause if filters are applied
+$where_clause = "";
+if(!empty($where_clauses)) {
+    $where_clause = "WHERE " . implode(" AND ", $where_clauses);
 }
 
 // Query to get assets
@@ -16,12 +40,13 @@ $query = "SELECT a.*, c.category_name, l.building, l.room
           FROM assets a
           LEFT JOIN categories c ON a.category_id = c.category_id
           LEFT JOIN locations l ON a.location_id = l.location_id
-          $status_filter
+          $where_clause
           ORDER BY a.asset_id DESC";
 
-if(!empty($status_filter)) {
+if(!empty($params)) {
     $stmt = mysqli_prepare($conn, $query);
-    mysqli_stmt_bind_param($stmt, "s", $filter_value);
+    // Bind parameters dynamically
+    mysqli_stmt_bind_param($stmt, $types, ...$params);
     mysqli_stmt_execute($stmt);
     $result = mysqli_stmt_get_result($stmt);
 } else {
@@ -34,12 +59,13 @@ if(!empty($status_filter)) {
         <h1>
             <i class="fas fa-boxes mr-2"></i>Asset Inventory
             <?php 
-            if(!empty($filter_value)) {
+            if(isset($_GET['status']) && !empty($_GET['status'])) {
+                $status = $_GET['status'];
                 echo ' - <span class="badge badge-' . 
-                    ($filter_value == 'available' ? 'success' : 
-                    ($filter_value == 'assigned' ? 'primary' : 
-                    ($filter_value == 'under_repair' ? 'warning' : 'secondary'))) . 
-                    '">' . ucfirst(str_replace('_', ' ', $filter_value)) . '</span>';
+                    ($status == 'available' ? 'success' : 
+                    ($status == 'assigned' ? 'primary' : 
+                    ($status == 'under_repair' ? 'warning' : 'secondary'))) . 
+                    '">' . ucfirst(str_replace('_', ' ', $status)) . '</span>';
             }
             ?>
         </h1>
@@ -59,59 +85,64 @@ if(!empty($status_filter)) {
         Filter Assets
     </div>
     <div class="card-body">
-        <div class="row">
-            <div class="col-md-3 mb-3">
-                <label for="statusFilter">Status</label>
-                <select id="statusFilter" class="form-control">
-                    <option value="">All Statuses</option>
-                    <option value="available" <?php echo ($filter_value == 'available') ? 'selected' : ''; ?>>Available</option>
-                    <option value="assigned" <?php echo ($filter_value == 'assigned') ? 'selected' : ''; ?>>Assigned</option>
-                    <option value="under_repair" <?php echo ($filter_value == 'under_repair') ? 'selected' : ''; ?>>Under Repair</option>
-                    <option value="disposed" <?php echo ($filter_value == 'disposed') ? 'selected' : ''; ?>>Disposed</option>
-                    <option value="lost" <?php echo ($filter_value == 'lost') ? 'selected' : ''; ?>>Lost</option>
-                    <option value="stolen" <?php echo ($filter_value == 'stolen') ? 'selected' : ''; ?>>Stolen</option>
-                </select>
-            </div>
-            <div class="col-md-3 mb-3">
-                <label for="categoryFilter">Category</label>
-                <select id="categoryFilter" class="form-control">
-                    <option value="">All Categories</option>
-                    <?php
-                    $categories_query = "SELECT * FROM categories ORDER BY category_name";
-                    $categories_result = mysqli_query($conn, $categories_query);
-                    while($category = mysqli_fetch_assoc($categories_result)) {
-                        echo '<option value="' . $category['category_id'] . '">' . 
-                            htmlspecialchars($category['category_name']) . '</option>';
-                    }
-                    ?>
-                </select>
-            </div>
-            <div class="col-md-3 mb-3">
-                <label for="locationFilter">Location</label>
-                <select id="locationFilter" class="form-control">
-                    <option value="">All Locations</option>
-                    <?php
-                    $locations_query = "SELECT * FROM locations ORDER BY building, room";
-                    $locations_result = mysqli_query($conn, $locations_query);
-                    while($location = mysqli_fetch_assoc($locations_result)) {
-                        $location_name = htmlspecialchars($location['building']);
-                        if(!empty($location['room'])) {
-                            $location_name .= ' - ' . htmlspecialchars($location['room']);
+        <!-- Using a standard HTML form instead of JavaScript -->
+        <form method="GET" action="index.php">
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <label for="status">Status</label>
+                    <select name="status" id="status" class="form-control">
+                        <option value="">All Statuses</option>
+                        <option value="available" <?php echo (isset($_GET['status']) && $_GET['status'] == 'available') ? 'selected' : ''; ?>>Available</option>
+                        <option value="assigned" <?php echo (isset($_GET['status']) && $_GET['status'] == 'assigned') ? 'selected' : ''; ?>>Assigned</option>
+                        <option value="under_repair" <?php echo (isset($_GET['status']) && $_GET['status'] == 'under_repair') ? 'selected' : ''; ?>>Under Repair</option>
+                        <option value="disposed" <?php echo (isset($_GET['status']) && $_GET['status'] == 'disposed') ? 'selected' : ''; ?>>Disposed</option>
+                        <option value="lost" <?php echo (isset($_GET['status']) && $_GET['status'] == 'lost') ? 'selected' : ''; ?>>Lost</option>
+                        <option value="stolen" <?php echo (isset($_GET['status']) && $_GET['status'] == 'stolen') ? 'selected' : ''; ?>>Stolen</option>
+                    </select>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label for="category">Category</label>
+                    <select name="category" id="category" class="form-control">
+                        <option value="">All Categories</option>
+                        <?php
+                        $categories_query = "SELECT * FROM categories ORDER BY category_name";
+                        $categories_result = mysqli_query($conn, $categories_query);
+                        while($category = mysqli_fetch_assoc($categories_result)) {
+                            $selected = (isset($_GET['category']) && $_GET['category'] == $category['category_id']) ? 'selected' : '';
+                            echo '<option value="' . $category['category_id'] . '" ' . $selected . '>' . 
+                                htmlspecialchars($category['category_name']) . '</option>';
                         }
-                        echo '<option value="' . $location['location_id'] . '">' . $location_name . '</option>';
-                    }
-                    ?>
-                </select>
+                        ?>
+                    </select>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label for="location">Location</label>
+                    <select name="location" id="location" class="form-control">
+                        <option value="">All Locations</option>
+                        <?php
+                        $locations_query = "SELECT * FROM locations ORDER BY building, room";
+                        $locations_result = mysqli_query($conn, $locations_query);
+                        while($location = mysqli_fetch_assoc($locations_result)) {
+                            $location_name = htmlspecialchars($location['building']);
+                            if(!empty($location['room'])) {
+                                $location_name .= ' - ' . htmlspecialchars($location['room']);
+                            }
+                            $selected = (isset($_GET['location']) && $_GET['location'] == $location['location_id']) ? 'selected' : '';
+                            echo '<option value="' . $location['location_id'] . '" ' . $selected . '>' . $location_name . '</option>';
+                        }
+                        ?>
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end mb-3">
+                    <button type="submit" class="btn btn-primary mr-2">
+                        <i class="fas fa-search mr-1"></i>Apply Filters
+                    </button>
+                    <a href="index.php" class="btn btn-secondary">
+                        <i class="fas fa-redo mr-1"></i>Reset
+                    </a>
+                </div>
             </div>
-            <div class="col-md-3 d-flex align-items-end mb-3">
-                <button id="applyFilters" class="btn btn-primary mr-2">
-                    <i class="fas fa-search mr-1"></i>Apply Filters
-                </button>
-                <a href="index.php" class="btn btn-secondary">
-                    <i class="fas fa-redo mr-1"></i>Reset
-                </a>
-            </div>
-        </div>
+        </form>
     </div>
 </div>
 
@@ -172,7 +203,7 @@ if(!empty($status_filter)) {
                             echo '<td>' . $location . '</td>';
                             
                             // Purchase date
-                            echo '<td>' . (!empty($row['purchase_date']) ? date('M d, Y', strtotime($row['purchase_date'])) : 'N/A') . '</td>';
+                            echo '<td>' . (!empty($row['purchase_date']) && $row['purchase_date'] != '0000-00-00' ? date('M d, Y', strtotime($row['purchase_date'])) : 'N/A') . '</td>';
                             
                             // Actions
                             echo '<td class="text-center">
@@ -216,36 +247,11 @@ $(document).ready(function() {
         pageLength: 25
     });
     
-    // Filter button click
-    $('#applyFilters').click(function() {
-        let url = 'index.php';
-        let params = [];
-        
-        // Get status filter
-        const status = $('#statusFilter').val();
-        if(status) {
-            params.push('status=' + status);
+    // Confirm delete
+    $('.confirm-delete').click(function(e) {
+        if(!confirm('Are you sure you want to delete this asset? This action cannot be undone.')) {
+            e.preventDefault();
         }
-        
-        // Get category filter
-        const category = $('#categoryFilter').val();
-        if(category) {
-            params.push('category=' + category);
-        }
-        
-        // Get location filter
-        const location = $('#locationFilter').val();
-        if(location) {
-            params.push('location=' + location);
-        }
-        
-        // Build URL with parameters
-        if(params.length > 0) {
-            url += '?' + params.join('&');
-        }
-        
-        // Redirect to filtered page
-        window.location.href = url;
     });
 });
 </script>
