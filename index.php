@@ -22,7 +22,10 @@ $pending_deliveries = mysqli_fetch_assoc($pending_deliveries_result)['total'];
 
 // Get department asset values
 $dept_values_query = "SELECT 
-                        COALESCE(l.department, 'Unassigned') as department, 
+                        CASE 
+                            WHEN l.department IS NULL OR TRIM(l.department) = '' THEN 'Unassigned'
+                            ELSE l.department 
+                        END as department, 
                         COUNT(a.asset_id) as asset_count, 
                         COALESCE(SUM(a.purchase_cost), 0) as total_value 
                       FROM assets a
@@ -30,7 +33,6 @@ $dept_values_query = "SELECT
                       GROUP BY department
                       ORDER BY total_value DESC";
 $dept_values_result = mysqli_query($conn, $dept_values_query);
-
 // Get average cost per category
 $category_avg_query = "SELECT 
                         c.category_name, 

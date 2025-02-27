@@ -291,7 +291,7 @@ function get_status_badge($status) {
  * @return string Formatted currency string
  */
 function format_currency($amount) {
-    return '$' . number_format($amount, 2);
+    return '₱' . number_format($amount, 2);
 }
 
 /**

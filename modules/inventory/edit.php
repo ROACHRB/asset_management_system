@@ -201,7 +201,7 @@ if($fetch_stmt = mysqli_prepare($conn, $fetch_sql)) {
                     <label for="purchase_cost">Purchase Cost</label>
                     <div class="input-group">
                         <div class="input-group-prepend">
-                            <span class="input-group-text">$</span>
+                            <span class="input-group-text">₱</span>
                         </div>
                         <input type="number" class="form-control" id="purchase_cost" name="purchase_cost" step="0.01" min="0" value="<?php echo $purchase_cost; ?>">
                     </div>

@@ -213,14 +213,14 @@ $locations_result = mysqli_query($conn, "SELECT * FROM locations ORDER BY buildi
                         </td>
                         <td><?php echo htmlspecialchars($row['assigned_to']); ?></td>
                         <td><?php echo date('M d, Y', strtotime($row['purchase_date'])); ?></td>
-                        <td>$<?php echo number_format($row['purchase_cost'], 2); ?></td>
+                        <td>₱<?php echo number_format($row['purchase_cost'], 2); ?></td>
                     </tr>
                     <?php endwhile; ?>
                 </tbody>
                 <tfoot>
                     <tr>
                         <th colspan="7" class="text-right">Total Value:</th>
-                        <th>$<?php echo number_format($total_value, 2); ?></th>
+                        <th>₱<?php echo number_format($total_value, 2); ?></th>
                     </tr>
                 </tfoot>
             </table>
