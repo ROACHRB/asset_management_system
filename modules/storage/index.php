@@ -4,8 +4,11 @@ include_once "../../includes/header.php";
 // Get storage locations with asset counts
 $query = "SELECT l.*, 
           (SELECT COUNT(*) FROM assets WHERE location_id = l.location_id) as total_assets,
-          (SELECT COUNT(*) FROM assets WHERE location_id = l.location_id AND status = 'available') as available_assets
+          (SELECT COUNT(*) FROM assets WHERE location_id = l.location_id AND status = 'available') as available_assets,
+          GROUP_CONCAT(DISTINCT ld.department SEPARATOR ', ') as departments
           FROM locations l 
+          LEFT JOIN location_departments ld ON l.location_id = ld.location_id
+          GROUP BY l.location_id
           ORDER BY l.building, l.room";
 $result = mysqli_query($conn, $query);
 ?>
@@ -32,21 +35,48 @@ $result = mysqli_query($conn, $query);
                 <thead>
                     <tr>
                         <th>Building</th>
-                        <th>Room</th>
                         <th>Department</th>
                         <th>Total Assets</th>
                         <th>Available Assets</th>
+                        <th>Status</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php while($row = mysqli_fetch_assoc($result)): ?>
-                    <tr>
-                        <td><?php echo htmlspecialchars($row['building']); ?></td>
-                        <td><?php echo htmlspecialchars($row['room']); ?></td>
-                        <td><?php echo htmlspecialchars($row['department'] ?? 'N/A'); ?></td>
+                    <tr<?php echo isset($row['status']) && $row['status'] == 'inactive' ? ' class="table-secondary"' : ''; ?>>
+                        <td>
+                            <?php echo htmlspecialchars($row['building']); ?>
+                            <?php if(!empty($row['room'])): ?>
+                                <small class="text-muted d-block">Room: <?php echo htmlspecialchars($row['room']); ?></small>
+                            <?php endif; ?>
+                        </td>
+                        <td>
+                            <?php 
+                            // Show departments
+                            if(!empty($row['departments'])):
+                                $depts = explode(', ', $row['departments']);
+                                foreach($depts as $dept):
+                            ?>
+                                <span class="badge badge-info"><?php echo htmlspecialchars($dept); ?></span>
+                            <?php 
+                                endforeach;
+                            elseif(!empty($row['department'])): 
+                            ?>
+                                <span class="badge badge-info"><?php echo htmlspecialchars($row['department']); ?></span>
+                            <?php else: ?>
+                                <em class="text-muted">N/A</em>
+                            <?php endif; ?>
+                        </td>
                         <td class="text-center"><?php echo $row['total_assets']; ?></td>
                         <td class="text-center"><?php echo $row['available_assets']; ?></td>
+                        <td class="text-center">
+                            <?php if(isset($row['status']) && $row['status'] == 'inactive'): ?>
+                                <span class="badge badge-secondary">Inactive</span>
+                            <?php else: ?>
+                                <span class="badge badge-success">Active</span>
+                            <?php endif; ?>
+                        </td>
                         <td class="text-center">
                             <div class="btn-group" role="group">
                                 <a href="view.php?id=<?php echo $row['location_id']; ?>" 
@@ -57,12 +87,25 @@ $result = mysqli_query($conn, $query);
                                    class="btn btn-sm btn-primary" title="Edit Location">
                                     <i class="fas fa-edit"></i>
                                 </a>
-                                <a href="delete.php?id=<?php echo $row['location_id']; ?>" 
-                                   class="btn btn-sm btn-danger confirm-delete" 
-                                   data-assets="<?php echo $row['total_assets']; ?>"
-                                   title="Delete Location">
-                                    <i class="fas fa-trash"></i>
-                                </a>
+                                <?php if($row['total_assets'] > 0): ?>
+                                    <?php if(isset($row['status']) && $row['status'] == 'inactive'): ?>
+                                        <a href="toggle_status.php?id=<?php echo $row['location_id']; ?>&status=active" 
+                                           class="btn btn-sm btn-success" title="Activate Location">
+                                            <i class="fas fa-toggle-on"></i>
+                                        </a>
+                                    <?php else: ?>
+                                        <a href="toggle_status.php?id=<?php echo $row['location_id']; ?>&status=inactive" 
+                                           class="btn btn-sm btn-warning" title="Deactivate Location">
+                                            <i class="fas fa-toggle-off"></i>
+                                        </a>
+                                    <?php endif; ?>
+                                <?php else: ?>
+                                    <a href="delete.php?id=<?php echo $row['location_id']; ?>" 
+                                       class="btn btn-sm btn-danger confirm-delete" 
+                                       title="Delete Location">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                <?php endif; ?>
                             </div>
                         </td>
                     </tr>
@@ -81,11 +124,6 @@ $(document).ready(function() {
     // Handle delete confirmation
     $('.confirm-delete').click(function(e) {
         e.preventDefault();
-        const assets = $(this).data('assets');
-        if(assets > 0) {
-            alert('Cannot delete location with existing assets. Please move assets first.');
-            return;
-        }
         if(confirm('Are you sure you want to delete this location?')) {
             window.location = $(this).attr('href');
         }
