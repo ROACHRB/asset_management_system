@@ -3,7 +3,7 @@ include_once "../../includes/header.php";
 include_once "../../includes/functions.php";
 
 // Check if user has permission to generate reports
-enforce_permission('generate_reports', '../dashboard/index.php');
+require_permission('generate_reports', '../dashboard/index.php');
 
 // Handle form submission
 if($_SERVER["REQUEST_METHOD"] == "POST") {
