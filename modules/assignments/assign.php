@@ -291,19 +291,39 @@ $users_result = mysqli_query($conn, $users_query);
         </form>
     </div>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 
 <script>
 $(document).ready(function() {
     // Handle assignment type change
+    $(document).ready(function() {
+    // Handle assignment type change
     $('#assignment_type').change(function() {
-        if($(this).val() === 'temporary') {
+        if ($(this).val() === 'temporary') {
+            // Show return date field
             $('#returnDateGroup').show();
             $('#expected_return_date').prop('required', true);
         } else {
+            // Hide return date field and reset value
             $('#returnDateGroup').hide();
-            $('#expected_return_date').prop('required', false);
+            $('#expected_return_date').prop('required', false).val('');
+
+            // Show confirmation popup
+            Swal.fire({
+                title: "Confirm Permanent Assignment",
+                text: "This asset will be assigned permanently. No return date is required.",
+                icon: "warning",
+                confirmButtonText: "OK",
+                allowOutsideClick: false
+            });
         }
     });
+
+    // Trigger change on page load to set initial state
+    $('#assignment_type').trigger('change');
+});
+
     
     // Trigger change on page load
     $('#assignment_type').trigger('change');

@@ -1,4 +1,5 @@
 <?php
+ob_start(); // Start output buffering
 include_once "../../includes/header.php";
 
 // Check permission
@@ -20,6 +21,10 @@ $user_id = $_GET['id'];
 $roles_query = "SELECT * FROM roles ORDER BY role_name";
 $roles_result = mysqli_query($conn, $roles_query);
 
+// Get departments list
+$departments_query = "SELECT * FROM departments ORDER BY department_name";
+$departments_result = mysqli_query($conn, $departments_query);
+
 // Get user details
 $user_query = "SELECT * FROM users WHERE user_id = ?";
 $stmt = mysqli_prepare($conn, $user_query);
@@ -39,7 +44,8 @@ if($_SERVER["REQUEST_METHOD"] == "POST") {
         // Check if username exists (excluding current user)
         $sql = "SELECT user_id FROM users WHERE username = ? AND user_id != ?";
         $stmt = mysqli_prepare($conn, $sql);
-        mysqli_stmt_bind_param($stmt, "si", trim($_POST["username"]), $user_id);
+        $username = trim($_POST["username"]);
+        mysqli_stmt_bind_param($stmt, "si", $username, $user_id);
         mysqli_stmt_execute($stmt);
         mysqli_stmt_store_result($stmt);
         
@@ -67,14 +73,15 @@ if($_SERVER["REQUEST_METHOD"] == "POST") {
             "department = ?",
             "status = ?"
         ];
-        $params = [
-            trim($_POST["username"]),
-            trim($_POST["full_name"]),
-            trim($_POST["email"]),
-            $_POST["role"],
-            !empty($_POST["department"]) ? trim($_POST["department"]) : null,
-            $_POST["status"]
-        ];
+        
+        // Prepare variables for binding
+        $username = trim($_POST["username"]);
+        $full_name = trim($_POST["full_name"]);
+        $email = trim($_POST["email"]);
+        $role = $_POST["role"];
+        $department = !empty($_POST["department"]) ? trim($_POST["department"]) : null;
+        $status = $_POST["status"];
+        
         $types = "ssssss";
 
         // Add password update if provided
@@ -83,29 +90,33 @@ if($_SERVER["REQUEST_METHOD"] == "POST") {
                 $error = "Password must have at least 6 characters.";
             } else {
                 $sql_parts[] = "password = ?";
-                $params[] = password_hash(trim($_POST["password"]), PASSWORD_DEFAULT);
+                $password_hash = password_hash(trim($_POST["password"]), PASSWORD_DEFAULT);
                 $types .= "s";
             }
         }
 
         if(empty($error)) {
             $sql = "UPDATE users SET " . implode(", ", $sql_parts) . " WHERE user_id = ?";
-            $params[] = $user_id;
             $types .= "i";
 
             if($stmt = mysqli_prepare($conn, $sql)) {
-                mysqli_stmt_bind_param($stmt, $types, ...$params);
+                if(!empty($_POST["password"])) {
+                    mysqli_stmt_bind_param($stmt, $types, $username, $full_name, $email, 
+                                         $role, $department, $status, $password_hash, $user_id);
+                } else {
+                    mysqli_stmt_bind_param($stmt, $types, $username, $full_name, $email, 
+                                         $role, $department, $status, $user_id);
+                }
                 
                 if(mysqli_stmt_execute($stmt)) {
                     // Log the action
                     $log_query = "INSERT INTO user_activity_logs (user_id, activity_type, description, ip_address) 
                                 VALUES (?, 'user_updated', ?, ?)";
                     $log_stmt = mysqli_prepare($conn, $log_query);
-                    mysqli_stmt_bind_param($log_stmt, "iss", 
-                        $_SESSION['user_id'],
-                        "Updated user: " . trim($_POST["username"]),
-                        $_SERVER['REMOTE_ADDR']
-                    );
+                    $log_user_id = $_SESSION['user_id'];
+                    $log_desc = "Updated user: " . $username;
+                    $ip_address = $_SERVER['REMOTE_ADDR'];
+                    mysqli_stmt_bind_param($log_stmt, "iss", $log_user_id, $log_desc, $ip_address);
                     mysqli_stmt_execute($log_stmt);
                     
                     // Redirect to user list
@@ -187,8 +198,18 @@ if($_SERVER["REQUEST_METHOD"] == "POST") {
                 </div>
                 <div class="form-group col-md-4">
                     <label for="department">Department</label>
-                    <input type="text" class="form-control" id="department" name="department" 
-                           value="<?php echo htmlspecialchars($user['department'] ?? ''); ?>">
+                    <select class="form-control" id="department" name="department">
+                        <option value="">-- Select Department --</option>
+                        <?php 
+                        mysqli_data_seek($departments_result, 0);
+                        while($dept = mysqli_fetch_assoc($departments_result)): 
+                        ?>
+                            <option value="<?php echo $dept['department_id']; ?>" 
+                                    <?php if($user['department'] == $dept['department_id']) echo 'selected'; ?>>
+                                <?php echo htmlspecialchars($dept['department_name']); ?>
+                            </option>
+                        <?php endwhile; ?>
+                    </select>
                 </div>
                 <div class="form-group col-md-4">
                     <label for="status" class="required-field">Status</label>
@@ -254,4 +275,7 @@ $(document).ready(function() {
 });
 </script>
 
-<?php include_once "../../includes/footer.php"; ?>
+<?php 
+include_once "../../includes/footer.php"; 
+ob_end_flush(); // End output buffering and flush the buffer
+?>

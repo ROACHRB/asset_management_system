@@ -21,16 +21,15 @@ $available_assets = mysqli_fetch_assoc($available_assets_result)['total'];
 $pending_deliveries = mysqli_fetch_assoc($pending_deliveries_result)['total'];
 
 // Get department asset values
+// Get department asset values
 $dept_values_query = "SELECT 
-                        CASE 
-                            WHEN l.department IS NULL OR TRIM(l.department) = '' THEN 'Unassigned'
-                            ELSE l.department 
-                        END as department, 
+                        COALESCE(d.department_name, 'Unassigned') as department, 
                         COUNT(a.asset_id) as asset_count, 
                         COALESCE(SUM(a.purchase_cost), 0) as total_value 
                       FROM assets a
                       LEFT JOIN locations l ON a.location_id = l.location_id
-                      GROUP BY department
+                      LEFT JOIN departments d ON l.department = d.department_id
+                      GROUP BY COALESCE(d.department_name, 'Unassigned')
                       ORDER BY total_value DESC";
 $dept_values_result = mysqli_query($conn, $dept_values_query);
 // Get average cost per category
@@ -191,7 +190,9 @@ $depreciation_result = mysqli_query($conn, $depreciation_query);
                                 // Only show top 5 departments in table
                                 if($dept_counter++ < 5) {
                                     echo '<tr>';
-                                    echo '<td>' . htmlspecialchars($dept['department']) . '</td>';
+                                    // Check if department is "Unassigned" and replace with a better name
+                                    $display_department = ($dept['department'] == 'Unassigned') ? 'General Storage' : $dept['department'];
+                                    echo '<td>' . htmlspecialchars($display_department) . '</td>';
                                     echo '<td class="text-center">' . $dept['asset_count'] . '</td>';
                                     echo '<td class="text-right">' . format_currency($dept['total_value']) . '</td>';
                                     echo '</tr>';
@@ -353,7 +354,9 @@ document.addEventListener('DOMContentLoaded', function() {
     while($dept = mysqli_fetch_assoc($dept_values_result)) {
         // Limit to top 6 departments for chart clarity
         if($dept_counter++ < 6) {
-            $dept_labels[] = $dept['department'];
+            // Replace "Unassigned" with your preferred department name
+            $display_department = ($dept['department'] == 'Unassigned') ? 'General Storage' : $dept['department'];
+            $dept_labels[] = $display_department;
             $dept_values[] = $dept['total_value'];
             $dept_counts[] = $dept['asset_count'];
         }

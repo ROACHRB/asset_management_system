@@ -1,87 +1,94 @@
 <?php
-// Initialize the session
-session_start();
+// Enable error reporting for debugging
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
-// TEMPORARY TESTING BACKDOOR - REMOVE THIS IN PRODUCTION
-if(isset($_GET['directlogin']) && $_GET['directlogin'] == 'test123') {
-    $_SESSION["loggedin"] = true;
-    $_SESSION["user_id"] = 1;
-    $_SESSION["username"] = "admin";
-    $_SESSION["full_name"] = "System Administrator";
-    $_SESSION["role"] = "admin";
-    header("location: index.php");
+// Initialize the session securely
+if (session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Check if the user is already logged in
+if (isset($_SESSION["loggedin"]) && $_SESSION["loggedin"] === true) {
+    header("Location: index.php");
     exit;
 }
 
-// Check if the user is already logged in, if yes redirect to dashboard
-if(isset($_SESSION["loggedin"]) && $_SESSION["loggedin"] === true){
-    header("location: index.php");
-    exit;
-}
-
-// Include config file
+// Include database configuration
 require_once "config/database.php";
 
-// Define variables and initialize with empty values
+// Initialize variables
 $username = $password = "";
 $username_err = $password_err = $login_err = "";
 
-// Processing form data when form is submitted
-if($_SERVER["REQUEST_METHOD"] == "POST"){
-    // Check if username is empty
-    if(empty(trim($_POST["username"]))){
-        $username_err = "Please enter username.";
-    } else{
+// Process form submission
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    // Validate username
+    if (empty(trim($_POST["username"]))) {
+        $username_err = "Please enter your username.";
+    } else {
         $username = trim($_POST["username"]);
     }
-    
-    // Check if password is empty
-    if(empty(trim($_POST["password"]))){
+
+    // Validate password
+    if (empty(trim($_POST["password"]))) {
         $password_err = "Please enter your password.";
-    } else{
+    } else {
         $password = trim($_POST["password"]);
     }
-    
-    // Validate credentials
-    if(empty($username_err) && empty($password_err)){
-        // Simplified approach - directly query the database
-        $sql = "SELECT user_id, username, password, full_name, role FROM users WHERE username = ?";
-        $stmt = mysqli_prepare($conn, $sql);
-        mysqli_stmt_bind_param($stmt, "s", $username);
-        mysqli_stmt_execute($stmt);
-        $result = mysqli_stmt_get_result($stmt);
-        
-        if($row = mysqli_fetch_assoc($result)) {
-            // User found, verify password
-            if(password_verify($password, $row['password'])) {
-                // Password is correct, start a new session
-                session_start();
-                
-                // Store data in session variables
-                $_SESSION["loggedin"] = true;
-                $_SESSION["user_id"] = $row["user_id"];
-                $_SESSION["username"] = $row["username"];
-                $_SESSION["full_name"] = $row["full_name"];
-                $_SESSION["role"] = $row["role"];
-                
-                // Redirect to dashboard
-                header("location: index.php");
-                exit;
+
+    // Proceed if no errors
+    if (empty($username_err) && empty($password_err)) {
+        // Prepare SQL statement
+        $sql = "SELECT user_id, username, password, full_name, role, status FROM users WHERE username = ?";
+
+        if ($stmt = mysqli_prepare($conn, $sql)) {
+            mysqli_stmt_bind_param($stmt, "s", $username);
+            mysqli_stmt_execute($stmt);
+            $result = mysqli_stmt_get_result($stmt);
+
+            if ($row = mysqli_fetch_assoc($result)) {
+                // Check user status
+                if ($row["status"] === 'suspended') {
+                    $login_err = "Your account has been suspended by the admin.";
+                } elseif ($row["status"] !== 'active') {
+                    $login_err = "Your account is not yet approved. Please contact the administrator.";
+                }
+                 elseif (password_verify($password, $row['password'])) {
+                    // Start session and store user data
+                    session_regenerate_id(true);
+                    $_SESSION["loggedin"] = true;
+                    $_SESSION["user_id"] = $row["user_id"];
+                    $_SESSION["username"] = $row["username"];
+                    $_SESSION["full_name"] = $row["full_name"];
+                    $_SESSION["role"] = $row["role"];
+
+                    // ✅ Update last login time
+                    $update_sql = "UPDATE users SET last_login = NOW() WHERE user_id = ?";
+                    if ($update_stmt = mysqli_prepare($conn, $update_sql)) {
+                        mysqli_stmt_bind_param($update_stmt, "i", $row["user_id"]);
+                        mysqli_stmt_execute($update_stmt);
+                        mysqli_stmt_close($update_stmt);
+                    }
+
+                    // Redirect to dashboard
+                    header("Location: index.php");
+                    exit;
+                } else {
+                    $login_err = "Invalid username or password.";
+                }
             } else {
-                // Password is not valid
                 $login_err = "Invalid username or password.";
             }
+            mysqli_stmt_close($stmt);
         } else {
-            // Username doesn't exist
-            $login_err = "Invalid username or password.";
+            $login_err = "Something went wrong. Try again later.";
         }
-        
-        mysqli_stmt_close($stmt);
     }
-    
     mysqli_close($conn);
 }
 ?>
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -116,6 +123,17 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
             font-size: 3rem;
             color: #007bff;
         }
+        .password-toggle {
+            cursor: pointer;
+            padding: 0.375rem 0.75rem;
+            background-color: #e9ecef;
+            border: 1px solid #ced4da;
+            border-left: none;
+            border-radius: 0 0.25rem 0.25rem 0;
+        }
+        .password-toggle:hover {
+            background-color: #d1d7dc;
+        }
     </style>
 </head>
 <body>
@@ -128,11 +146,9 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
             <p class="text-muted">Login to your account</p>
         </div>
 
-        <?php 
-        if(!empty($login_err)){
-            echo '<div class="alert alert-danger">' . $login_err . '</div>';
-        }        
-        ?>
+        <?php if (!empty($login_err)): ?>
+            <div class="alert alert-danger"><?php echo $login_err; ?></div>
+        <?php endif; ?>
 
         <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
             <div class="form-group">
@@ -141,7 +157,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                     <div class="input-group-prepend">
                         <span class="input-group-text"><i class="fas fa-user"></i></span>
                     </div>
-                    <input type="text" name="username" class="form-control <?php echo (!empty($username_err)) ? 'is-invalid' : ''; ?>" value="<?php echo $username; ?>">
+                    <input type="text" name="username" class="form-control <?php echo (!empty($username_err)) ? 'is-invalid' : ''; ?>" value="<?php echo htmlspecialchars($username); ?>">
                     <div class="invalid-feedback"><?php echo $username_err; ?></div>
                 </div>
             </div>    
@@ -151,18 +167,38 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                     <div class="input-group-prepend">
                         <span class="input-group-text"><i class="fas fa-lock"></i></span>
                     </div>
-                    <input type="password" name="password" class="form-control <?php echo (!empty($password_err)) ? 'is-invalid' : ''; ?>">
+                    <input type="password" name="password" id="password" class="form-control <?php echo (!empty($password_err)) ? 'is-invalid' : ''; ?>">
+                    <div class="input-group-append">
+                        <span class="password-toggle" id="togglePassword">
+                            <i class="fas fa-eye"></i>
+                        </span>
+                    </div>
                     <div class="invalid-feedback"><?php echo $password_err; ?></div>
                 </div>
             </div>
             <div class="form-group">
                 <button type="submit" class="btn btn-primary btn-block">Login</button>
             </div>
+            <div class="text-center mt-3">
+                <p>Don't have an account? <a href="register.php">Register here</a></p>
+            </div>
         </form>
     </div>
-    
+
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    
+    <script>
+    $(document).ready(function() {
+        // Toggle password visibility
+        $("#togglePassword").click(function() {
+            const passwordField = $("#password");
+            const passwordFieldType = passwordField.attr("type");
+            passwordField.attr("type", passwordFieldType === "password" ? "text" : "password");
+            $(this).find("i").toggleClass("fa-eye fa-eye-slash");
+        });
+    });
+    </script>
 </body>
 </html>

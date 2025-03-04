@@ -17,13 +17,15 @@ $assignment_id = trim($_GET['id']);
 $sql = "SELECT aa.*, a.asset_id, a.asset_name, a.asset_tag, a.serial_number, 
                a.status as asset_status, a.condition_status,
                c.category_name, l.building, l.room,
-               u1.full_name as assigned_to_name, u1.email as assigned_to_email, u1.department,
+               u1.full_name as assigned_to_name, u1.email as assigned_to_email, 
+               u1.department as department_id, d.department_name,
                u2.full_name as assigned_by_name
         FROM asset_assignments aa
         JOIN assets a ON aa.asset_id = a.asset_id
         LEFT JOIN categories c ON a.category_id = c.category_id
         LEFT JOIN locations l ON a.location_id = l.location_id
         JOIN users u1 ON aa.assigned_to = u1.user_id
+        LEFT JOIN departments d ON u1.department = d.department_id
         JOIN users u2 ON aa.assigned_by = u2.user_id
         WHERE aa.assignment_id = ?";
 
@@ -274,8 +276,8 @@ if($status == 'assigned' && !empty($assignment['expected_return_date']) &&
                 
                 <h5><?php echo htmlspecialchars($assignment['assigned_to_name']); ?></h5>
                 
-                <?php if(!empty($assignment['department'])): ?>
-                <p class="text-muted"><?php echo htmlspecialchars($assignment['department']); ?></p>
+                <?php if(!empty($assignment['department_name'])): ?>
+                <p class="text-muted"><?php echo htmlspecialchars($assignment['department_name']); ?></p>
                 <?php endif; ?>
                 
                 <hr>

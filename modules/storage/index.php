@@ -4,10 +4,8 @@ include_once "../../includes/header.php";
 // Get storage locations with asset counts
 $query = "SELECT l.*, 
           (SELECT COUNT(*) FROM assets WHERE location_id = l.location_id) as total_assets,
-          (SELECT COUNT(*) FROM assets WHERE location_id = l.location_id AND status = 'available') as available_assets,
-          GROUP_CONCAT(DISTINCT ld.department SEPARATOR ', ') as departments
+          (SELECT COUNT(*) FROM assets WHERE location_id = l.location_id AND status = 'available') as available_assets
           FROM locations l 
-          LEFT JOIN location_departments ld ON l.location_id = ld.location_id
           GROUP BY l.location_id
           ORDER BY l.building, l.room";
 $result = mysqli_query($conn, $query);
@@ -16,7 +14,7 @@ $result = mysqli_query($conn, $query);
 <div class="row mb-4">
     <div class="col-md-8">
         <h1><i class="fas fa-warehouse mr-2"></i>Storage Management</h1>
-        <p class="text-muted">Manage storage locations and departments</p>
+        <p class="text-muted">Manage storage locations</p>
     </div>
     <div class="col-md-4 text-right">
         <a href="add.php" class="btn btn-primary">
@@ -35,7 +33,6 @@ $result = mysqli_query($conn, $query);
                 <thead>
                     <tr>
                         <th>Building</th>
-                        <th>Department</th>
                         <th>Total Assets</th>
                         <th>Available Assets</th>
                         <th>Status</th>
@@ -49,23 +46,6 @@ $result = mysqli_query($conn, $query);
                             <?php echo htmlspecialchars($row['building']); ?>
                             <?php if(!empty($row['room'])): ?>
                                 <small class="text-muted d-block">Room: <?php echo htmlspecialchars($row['room']); ?></small>
-                            <?php endif; ?>
-                        </td>
-                        <td>
-                            <?php 
-                            // Show departments
-                            if(!empty($row['departments'])):
-                                $depts = explode(', ', $row['departments']);
-                                foreach($depts as $dept):
-                            ?>
-                                <span class="badge badge-info"><?php echo htmlspecialchars($dept); ?></span>
-                            <?php 
-                                endforeach;
-                            elseif(!empty($row['department'])): 
-                            ?>
-                                <span class="badge badge-info"><?php echo htmlspecialchars($row['department']); ?></span>
-                            <?php else: ?>
-                                <em class="text-muted">N/A</em>
                             <?php endif; ?>
                         </td>
                         <td class="text-center"><?php echo $row['total_assets']; ?></td>

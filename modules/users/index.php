@@ -24,13 +24,35 @@ if(isset($_SESSION['error']) && !empty($_SESSION['error'])) {
     unset($_SESSION['error']);
 }
 
-// Get users list with roles and status
+// Display force delete option when applicable
+if(isset($_SESSION['show_force_delete']) && $_SESSION['show_force_delete'] && isset($_SESSION['force_delete_user_id'])): ?>
+<div class="alert alert-warning alert-dismissible fade show" role="alert">
+    <p><strong>Note:</strong> User was suspended instead of deleted due to dependencies.</p>
+    <p>If you still want to delete this user completely, you can 
+        <a href="manage_user.php?id=<?php echo $_SESSION['force_delete_user_id']; ?>&force=true" class="alert-link">
+            force delete
+        </a> 
+        but this may cause data integrity issues.
+    </p>
+    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+        <span aria-hidden="true">&times;</span>
+    </button>
+</div>
+<?php 
+    // Clear the session variables after displaying the message
+    unset($_SESSION['show_force_delete']);
+    unset($_SESSION['force_delete_user_id']);
+endif; 
+
+// Get users list with roles, department names, and status
 $query = "SELECT u.*, 
           (SELECT COUNT(*) FROM asset_assignments 
            WHERE assigned_to = u.user_id AND assignment_status = 'assigned') as active_assignments,
-          r.role_name
+          r.role_name,
+          d.department_name
           FROM users u
           LEFT JOIN roles r ON u.role = r.role_name
+          LEFT JOIN departments d ON u.department = d.department_id
           ORDER BY u.full_name";
 $result = mysqli_query($conn, $query);
 ?>
@@ -193,7 +215,7 @@ $result = mysqli_query($conn, $query);
                                 <?php echo ucfirst($row['role']); ?>
                             </span>
                         </td>
-                        <td><?php echo htmlspecialchars($row['department'] ?? 'N/A'); ?></td>
+                        <td><?php echo htmlspecialchars($row['department_name'] ?? 'N/A'); ?></td>
                         <td>
                             <span class="badge badge-<?php 
                                 echo ($row['status'] == 'active' ? 'success' : 
@@ -223,27 +245,26 @@ $result = mysqli_query($conn, $query);
                                 </a>
                                 <?php if($row['user_id'] != $_SESSION['user_id']): ?>
                                     <?php if($row['status'] == 'active'): ?>
-                                    <a href="suspend.php?id=<?php echo $row['user_id']; ?>" 
+                                    <a href="process_user.php?id=<?php echo $row['user_id']; ?>&action=suspend" 
                                        class="btn btn-sm btn-warning confirm-action" 
                                        data-message="Are you sure you want to suspend this user?"
                                        title="Suspend User">
                                         <i class="fas fa-user-lock"></i>
                                     </a>
                                     <?php else: ?>
-                                    <a href="activate.php?id=<?php echo $row['user_id']; ?>" 
+                                    <a href="process_user.php?id=<?php echo $row['user_id']; ?>&action=activate" 
                                        class="btn btn-sm btn-success confirm-action"
                                        data-message="Are you sure you want to activate this user?"
                                        title="Activate User">
                                         <i class="fas fa-user-check"></i>
                                     </a>
                                     <?php endif; ?>
-                                    <a href="delete_user.php?id=<?php echo $row['user_id']; ?>" 
+                                    <a href="manage_user.php?id=<?php echo $row['user_id']; ?>" 
                                        class="btn btn-sm btn-danger"
-                                       title="Delete User">
-                                        <i class="fas fa-trash"></i>
+                                       title="Manage User">
+                                        <i class="fas fa-user-cog"></i>
                                     </a>
                                 <?php endif; ?>
-                                
                             </div>
                         </td>
                     </tr>

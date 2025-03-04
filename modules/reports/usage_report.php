@@ -9,7 +9,8 @@ require_permission('generate_reports', '../dashboard/index.php');
 if($_SERVER["REQUEST_METHOD"] == "POST") {
     $time_period = sanitize_input($conn, $_POST['time_period']);
     $category = isset($_POST['category']) ? intval($_POST['category']) : null;
-    $department = sanitize_input($conn, $_POST['department']);
+    $department = isset($_POST['department']) ? sanitize_input($conn, $_POST['department']) : null;
+
     
     // Calculate date ranges based on selected time period
     $end_date = date('Y-m-d');
@@ -142,8 +143,9 @@ if($_SERVER["REQUEST_METHOD"] == "POST") {
 $categories_result = mysqli_query($conn, "SELECT * FROM categories ORDER BY category_name");
 
 // Get distinct departments
-$departments_query = "SELECT DISTINCT department FROM users WHERE department IS NOT NULL AND department != '' ORDER BY department";
+$departments_query = "SELECT department_id, department_name FROM departments ORDER BY department_id ASC";
 $departments_result = mysqli_query($conn, $departments_query);
+
 ?>
 
 <div class="row mb-4">
@@ -207,19 +209,19 @@ $departments_result = mysqli_query($conn, $departments_query);
                     </div>
                 </div>
                 <div class="col-md-3">
-                    <div class="form-group">
-                        <label>Department</label>
-                        <select class="form-control" name="department">
-                            <option value="">All Departments</option>
-                            <?php while($dept = mysqli_fetch_assoc($departments_result)): ?>
-                                <option value="<?php echo $dept['department']; ?>"
-                                    <?php if(isset($_POST['department']) && $_POST['department'] == $dept['department']) echo 'selected'; ?>>
-                                    <?php echo htmlspecialchars($dept['department']); ?>
-                                </option>
-                            <?php endwhile; ?>
-                        </select>
-                    </div>
-                </div>
+                <div class="form-group">
+    <label>Department</label>
+    <select class="form-control" name="department">
+        <option value="">All Departments</option>
+        <?php while($dept = mysqli_fetch_assoc($departments_result)): ?>
+            <option value="<?php echo htmlspecialchars($dept['department_id']); ?>"
+                <?php if(isset($_POST['department']) && $_POST['department'] == $dept['department_id']) echo 'selected'; ?>>
+                <?php echo htmlspecialchars($dept['department_name']); ?>
+            </option>
+        <?php endwhile; ?>
+    </select>
+</div>
+
             </div>
             <div class="row">
                 <div class="col-md-12">
