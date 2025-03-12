@@ -1,5 +1,6 @@
 <?php
 // File: modules/audits/new.php
+ob_start();
 include_once "../../includes/header.php";
 
 // Check permission
@@ -190,6 +191,7 @@ $(document).ready(function() {
         }
     });
 });
+ob_end_flush();
 </script>
 
 <?php include_once "../../includes/footer.php"; ?>

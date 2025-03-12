@@ -39,7 +39,7 @@ if(!empty($status_filter)) {
             <?php 
             if(!empty($filter_value)) {
                 echo ' - <span class="badge badge-' . 
-                    ($filter_value == 'pending' ? 'warning' : 
+                    ($filter_value == 'received' ? 'primary' : 
                     ($filter_value == 'processing' ? 'info' : 
                     ($filter_value == 'completed' ? 'success' : 'secondary'))) . 
                     '">' . ucfirst($filter_value) . '</span>';
@@ -67,7 +67,7 @@ if(!empty($status_filter)) {
                 <label for="statusFilter">Status</label>
                 <select id="statusFilter" class="form-control">
                     <option value="">All Statuses</option>
-                    <option value="pending" <?php echo ($filter_value == 'pending') ? 'selected' : ''; ?>>Pending</option>
+                    <option value="received" <?php echo ($filter_value == 'received') ? 'selected' : ''; ?>>Received</option>
                     <option value="processing" <?php echo ($filter_value == 'processing') ? 'selected' : ''; ?>>Processing</option>
                     <option value="completed" <?php echo ($filter_value == 'completed') ? 'selected' : ''; ?>>Completed</option>
                 </select>
@@ -139,7 +139,7 @@ if(!empty($status_filter)) {
                             $status = 'completed';
                             if($row['pending_items'] > 0) {
                                 if($row['pending_items'] == $row['item_count']) {
-                                    $status = 'pending';
+                                    $status = 'received'; // Changed from 'pending' to 'received'
                                 } else {
                                     $status = 'processing';
                                 }
@@ -155,7 +155,7 @@ if(!empty($status_filter)) {
                             // Status badge
                             $badge_class = '';
                             switch($status) {
-                                case 'pending': $badge_class = 'warning'; break;
+                                case 'received': $badge_class = 'primary'; break;
                                 case 'processing': $badge_class = 'info'; break;
                                 case 'completed': $badge_class = 'success'; break;
                                 default: $badge_class = 'secondary';
@@ -178,8 +178,8 @@ if(!empty($status_filter)) {
                                         <i class="fas fa-edit"></i>
                                     </a>';
                             
-                            // Only show delete for pending deliveries
-                            if($status == 'pending') {
+                            // Only show delete for received (formerly pending) deliveries
+                            if($status == 'received') {
                                 echo '<a href="delete_delivery.php?id=' . $row['delivery_id'] . '" class="btn btn-sm btn-danger confirm-delete" title="Delete Delivery">
                                         <i class="fas fa-trash"></i>
                                     </a>';

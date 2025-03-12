@@ -63,7 +63,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     $_SESSION["full_name"] = $row["full_name"];
                     $_SESSION["role"] = $row["role"];
 
-                    // ✅ Update last login time
+                    // Update last login time
                     $update_sql = "UPDATE users SET last_login = NOW() WHERE user_id = ?";
                     if ($update_stmt = mysqli_prepare($conn, $update_sql)) {
                         mysqli_stmt_bind_param($update_stmt, "i", $row["user_id"]);
@@ -94,7 +94,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Login - Asset Management System</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
@@ -106,6 +106,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             display: flex;
             align-items: center;
             justify-content: center;
+            padding: 15px;
         }
         .login-container {
             max-width: 400px;
@@ -130,9 +131,61 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             border: 1px solid #ced4da;
             border-left: none;
             border-radius: 0 0.25rem 0.25rem 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .password-toggle:hover {
             background-color: #d1d7dc;
+        }
+        
+        /* WebView specific styles */
+        html, body {
+            overflow-x: hidden;
+            position: relative;
+            width: 100%;
+        }
+        
+        /* Improve mobile WebView compatibility */
+        @media (max-width: 767px) {
+            body {
+                height: auto;
+                min-height: 100vh;
+                padding: 20px 15px;
+            }
+            
+            .login-container {
+                padding: 20px;
+                max-width: 100%;
+                margin: 0 auto;
+            }
+            
+            .logo-icon {
+                font-size: 2.5rem;
+            }
+            
+            /* Fix input issues on mobile WebView */
+            .form-control {
+                -webkit-appearance: none;
+                border-radius: 0.25rem;
+                height: 44px; /* Slightly bigger tap targets */
+                font-size: 16px !important; /* Prevents iOS zoom on focus */
+            }
+            
+            .input-group-text {
+                height: 44px;
+            }
+            
+            /* Increase form field spacing */
+            .form-group {
+                margin-bottom: 20px;
+            }
+            
+            /* Make login button more tappable */
+            .btn {
+                height: 44px;
+                font-size: 16px;
+            }
         }
     </style>
 </head>
@@ -158,7 +211,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         <span class="input-group-text"><i class="fas fa-user"></i></span>
                     </div>
                     <input type="text" name="username" class="form-control <?php echo (!empty($username_err)) ? 'is-invalid' : ''; ?>" value="<?php echo htmlspecialchars($username); ?>">
-                    <div class="invalid-feedback"><?php echo $username_err; ?></div>
+                    <?php if (!empty($username_err)): ?>
+                        <div class="invalid-feedback"><?php echo $username_err; ?></div>
+                    <?php endif; ?>
                 </div>
             </div>    
             <div class="form-group">
@@ -173,7 +228,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             <i class="fas fa-eye"></i>
                         </span>
                     </div>
-                    <div class="invalid-feedback"><?php echo $password_err; ?></div>
+                    <?php if (!empty($password_err)): ?>
+                        <div class="invalid-feedback"><?php echo $password_err; ?></div>
+                    <?php endif; ?>
                 </div>
             </div>
             <div class="form-group">
@@ -198,6 +255,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             passwordField.attr("type", passwordFieldType === "password" ? "text" : "password");
             $(this).find("i").toggleClass("fa-eye fa-eye-slash");
         });
+        
+        // Fix for some WebView issues - ensure proper viewport height
+        function adjustHeight() {
+            let vh = window.innerHeight * 0.01;
+            document.documentElement.style.setProperty('--vh', `${vh}px`);
+        }
+        
+        // Set the height initially and on resize
+        adjustHeight();
+        window.addEventListener('resize', adjustHeight);
+        window.addEventListener('orientationchange', adjustHeight);
     });
     </script>
 </body>

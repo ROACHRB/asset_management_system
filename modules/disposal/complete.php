@@ -1,10 +1,15 @@
 <?php
 // FILE PATH: asset_management_system/modules/disposal/complete.php
+
+// Add output buffering to fix header issues
+ob_start();
+
 include_once "../../includes/header.php";
 
 // Check if user has admin role
 if ($_SESSION['role'] != 'admin') {
-    header("Location: index.php");
+    $_SESSION['error'] = "You don't have permission to access this page.";
+    echo '<script>window.location.href = "index.php";</script>';
     exit;
 }
 
@@ -50,16 +55,29 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         mysqli_begin_transaction($conn);
         
         try {
-            // Update disposal request
+            // Check if the completion_notes column exists in your database
+            // If it doesn't exist, use 'notes' or another available column instead
+            
+            // Update disposal request - MODIFIED to use 'notes' instead of 'completion_notes'
             $update_sql = "UPDATE disposal_requests SET 
                           status = 'completed', 
-                          completion_date = NOW(),
-                          completion_notes = ?
-                          WHERE disposal_id = ?";
-            
-            $stmt = mysqli_prepare($conn, $update_sql);
+                          completion_date = NOW()";
+                          
+            // Add notes to the query if the notes field exists in your table
+            // If you have a different column for notes, replace 'notes' with that column name
             $combined_notes = "Disposal method: $disposal_method\n\n$completion_notes";
-            mysqli_stmt_bind_param($stmt, "si", $combined_notes, $disposal_id);
+            
+            // Check if the disposal_requests table has a 'notes' column
+            $check_column = mysqli_query($conn, "SHOW COLUMNS FROM disposal_requests LIKE 'notes'");
+            if (mysqli_num_rows($check_column) > 0) {
+                $update_sql .= ", notes = ? ";
+                $stmt = mysqli_prepare($conn, $update_sql . " WHERE disposal_id = ?");
+                mysqli_stmt_bind_param($stmt, "si", $combined_notes, $disposal_id);
+            } else {
+                // If no notes column exists, just update without it
+                $stmt = mysqli_prepare($conn, $update_sql . " WHERE disposal_id = ?");
+                mysqli_stmt_bind_param($stmt, "i", $disposal_id);
+            }
             
             if (!mysqli_stmt_execute($stmt)) {
                 throw new Exception("Failed to update disposal request: " . mysqli_error($conn));
@@ -110,9 +128,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             // Commit transaction
             mysqli_commit($conn);
             
-            // Set success message and redirect
+            // Set success message and redirect using JavaScript
             $_SESSION['success_message'] = "Asset has been marked as disposed successfully.";
-            header("Location: view.php?id=$disposal_id");
+            echo '<script>window.location.href = "view.php?id=' . $disposal_id . '";</script>';
             exit;
             
         } catch (Exception $e) {
@@ -271,4 +289,8 @@ $(document).ready(function() {
 });
 </script>
 
-<?php include_once "../../includes/footer.php"; ?>
+<?php 
+include_once "../../includes/footer.php"; 
+// Flush the output buffer
+ob_end_flush();
+?>

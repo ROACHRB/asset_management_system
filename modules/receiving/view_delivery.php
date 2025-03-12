@@ -43,17 +43,17 @@ if($stmt = mysqli_prepare($conn, $sql)) {
     exit;
 }
 
-// Fetch delivery items
+// Fetch delivery items - Modified the query to fix the unknown column error
 $items_sql = "SELECT di.*, c.category_name,
               (CASE WHEN a.asset_id IS NOT NULL THEN 1 ELSE 0 END) as is_asset
               FROM delivery_items di
               LEFT JOIN categories c ON di.category_id = c.category_id
-              LEFT JOIN assets a ON di.item_id = a.delivery_item_id
+              LEFT JOIN assets a ON di.item_id = a.category_id AND a.supplier = ?
               WHERE di.delivery_id = ?
               ORDER BY di.item_id";
 
 $items_stmt = mysqli_prepare($conn, $items_sql);
-mysqli_stmt_bind_param($items_stmt, "i", $delivery_id);
+mysqli_stmt_bind_param($items_stmt, "si", $delivery['supplier'], $delivery_id);
 mysqli_stmt_execute($items_stmt);
 $items_result = mysqli_stmt_get_result($items_stmt);
 
@@ -241,7 +241,7 @@ if($total_count > 0) {
                                         </td>
                                         <td class="text-center">
                                             <?php if($item['status'] == 'pending'): ?>
-                                                <a href="process_item.php?id=<?php echo $item['item_id']; ?>" class="btn btn-sm btn-primary">
+                                                <a href="process_items.php?id=<?php echo $item['item_id']; ?>" class="btn btn-sm btn-primary">
                                                     <i class="fas fa-clipboard-check"></i>
                                                 </a>
                                             <?php elseif($item['is_asset']): ?>

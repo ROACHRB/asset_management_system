@@ -42,6 +42,20 @@ require_once $_SERVER['DOCUMENT_ROOT'] . '/asset_management_system/includes/func
                     </a>
                 </li>
 
+                <!-- My Assets - Only shown for users with 'user' role -->
+                <?php if($_SESSION['role'] == 'user'): ?>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="myAssetsDropdown" role="button" data-toggle="dropdown">
+                        <i class="fas fa-laptop mr-1"></i>My Assets
+                    </a>
+                    <div class="dropdown-menu">
+                        <a class="dropdown-item" href="/asset_management_system/modules/assignments/my_assets.php">
+                            <i class="fas fa-list mr-2"></i>View My Assets
+                        </a>
+                    </div>
+                </li>
+                <?php endif; ?>
+
                 <!-- Inventory Management - requires manage_assets permission -->
                 <?php if(has_permission('manage_assets')): ?>
                 <li class="nav-item dropdown">
@@ -243,4 +257,4 @@ require_once $_SERVER['DOCUMENT_ROOT'] . '/asset_management_system/includes/func
         </div>
         <?php unset($_SESSION['success']); endif; ?>
         
-        <!-- Page content will be inserted here -->
+        <!-- Page content will be inserted here --> 
