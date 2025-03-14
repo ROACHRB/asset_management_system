@@ -16,12 +16,17 @@ if($conn === false){
 // Set charset to ensure proper character encoding
 mysqli_set_charset($conn, "utf8mb4");
 
-// Function to sanitize user inputs
+// Function to sanitize user inputs against XSS attacks
 function sanitize_input($conn, $data) {
     $data = trim($data);
     $data = stripslashes($data);
-    $data = htmlspecialchars($data);
+    $data = htmlspecialchars($data, ENT_QUOTES, 'UTF-8'); // Added ENT_QUOTES and UTF-8
     return mysqli_real_escape_string($conn, $data);
+}
+
+// Function to safely output data in JavaScript contexts
+function js_escape($data) {
+    return json_encode($data);
 }
 
 // Function to log system actions
@@ -34,3 +39,4 @@ function log_action($conn, $asset_id, $action, $user_id, $notes = '') {
     
     return mysqli_stmt_execute($stmt);
 }
+?>

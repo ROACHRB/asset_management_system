@@ -20,52 +20,64 @@ if (!has_permission('manage_assets')) {
     die("Access denied. You don't have permission to print asset tags.");
 }
 
-// Check if asset IDs are provided
+// Debug incoming parameters
+error_log('Batch print request received with IDs: ' . (isset($_GET['ids']) ? $_GET['ids'] : 'none'));
+
+// Process asset IDs
 $asset_ids = [];
-if (isset($_GET['ids'])) {
+if (isset($_GET['ids']) && !empty($_GET['ids'])) {
     $ids_param = $_GET['ids'];
     $asset_ids = explode(',', $ids_param);
     
-    // Validate that all IDs are numeric
+    // Clean and validate IDs
     foreach ($asset_ids as $key => $id) {
+        $id = trim($id);
         if (!is_numeric($id)) {
+            error_log('Removing non-numeric ID: ' . $id);
             unset($asset_ids[$key]);
+        } else {
+            $asset_ids[$key] = (int)$id;
         }
     }
+    
+    // Reindex array
+    $asset_ids = array_values($asset_ids);
+    error_log('Valid asset IDs: ' . implode(',', $asset_ids) . ' (Count: ' . count($asset_ids) . ')');
 }
 
-// Get assets information
+// Get assets information - DIRECT QUERY APPROACH
 $assets = [];
 if (!empty($asset_ids)) {
-    $placeholders = implode(',', array_fill(0, count($asset_ids), '?'));
+    // Simple approach with direct query
+    $ids_string = implode(',', $asset_ids); // Safe because we validated all IDs are numeric integers
     
     $assets_query = "SELECT a.*, c.category_name
                     FROM assets a
                     LEFT JOIN categories c ON a.category_id = c.category_id
-                    WHERE a.asset_id IN ($placeholders)
-                    AND a.asset_tag IS NOT NULL
+                    WHERE a.asset_id IN ($ids_string)
                     ORDER BY a.asset_tag";
     
-    $stmt = mysqli_prepare($conn, $assets_query);
+    error_log('Executing query: ' . $assets_query);
+    $result = mysqli_query($conn, $assets_query);
     
-    // Bind all IDs as parameters
-    $types = str_repeat('i', count($asset_ids));
-    mysqli_stmt_bind_param($stmt, $types, ...$asset_ids);
-    
-    mysqli_stmt_execute($stmt);
-    $assets_result = mysqli_stmt_get_result($stmt);
-    
-    while ($asset = mysqli_fetch_assoc($assets_result)) {
-        $assets[] = $asset;
-        
-        // Log the print action for each asset
-        if (function_exists('log_asset_action')) {
-            log_asset_action($conn, $asset['asset_id'], 'updated', $_SESSION['user_id'], 'Asset tag printed (batch)');
-        } else if (function_exists('log_action')) {
-            log_action($conn, $asset['asset_id'], 'updated', $_SESSION['user_id'], 'Asset tag printed (batch)');
+    if ($result) {
+        while ($asset = mysqli_fetch_assoc($result)) {
+            $assets[] = $asset;
+            error_log('Found asset: ID=' . $asset['asset_id'] . ', Tag=' . ($asset['asset_tag'] ?? 'No Tag'));
+            
+            // Log the print action
+            if (function_exists('log_asset_action')) {
+                log_asset_action($conn, $asset['asset_id'], 'updated', $_SESSION['user_id'], 'Asset tag printed (batch)');
+            } else if (function_exists('log_action')) {
+                log_action($conn, $asset['asset_id'], 'updated', $_SESSION['user_id'], 'Asset tag printed (batch)');
+            }
         }
+    } else {
+        error_log('Query failed: ' . mysqli_error($conn));
     }
 }
+
+error_log('Total assets found: ' . count($assets));
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -180,6 +192,11 @@ if (!empty($asset_ids)) {
         .print-button:hover {
             background-color: #45a049;
         }
+        
+        .print-button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
@@ -206,6 +223,12 @@ if (!empty($asset_ids)) {
     
     <!-- Asset Tags -->
     <?php foreach ($assets as $index => $asset): ?>
+        <?php 
+        // Ensure we have valid data for tags, QR codes, and barcodes
+        $asset_tag = !empty($asset['asset_tag']) ? $asset['asset_tag'] : 'ID:' . $asset['asset_id'];
+        $qr_code_data = !empty($asset['qr_code']) ? $asset['qr_code'] : $asset_tag;
+        $barcode_data = !empty($asset['barcode']) ? $asset['barcode'] : $asset_tag;
+        ?>
         <div class="tag-container <?php echo ($index < count($assets) - 1) ? 'page-break' : ''; ?>">
             <div class="org-name">ASSET MANAGEMENT SYSTEM</div>
             
@@ -216,7 +239,7 @@ if (!empty($asset_ids)) {
             
             <div class="code-container">
                 <!-- QR Code using Google Chart API -->
-                <img src="https://chart.googleapis.com/chart?chs=150x150&cht=qr&chl=<?php echo urlencode($asset['qr_code']); ?>&choe=UTF-8" 
+                <img src="https://chart.googleapis.com/chart?chs=150x150&cht=qr&chl=<?php echo urlencode($qr_code_data); ?>&choe=UTF-8" 
                      alt="QR Code" class="qr-code">
                 
                 <div style="flex-grow: 1; text-align: center; padding-top: 5mm;">
@@ -224,12 +247,12 @@ if (!empty($asset_ids)) {
                     <div style="font-size: 8pt; margin-bottom: 2mm;">ID: <?php echo $asset['asset_id']; ?></div>
                     
                     <!-- Asset Tag -->
-                    <div class="asset-tag"><?php echo htmlspecialchars($asset['asset_tag']); ?></div>
+                    <div class="asset-tag"><?php echo htmlspecialchars($asset_tag); ?></div>
                 </div>
             </div>
             
             <!-- Barcode -->
-            <img src="generate_barcode.php?text=<?php echo urlencode($asset['barcode']); ?>" alt="Barcode" class="barcode">
+            <img src="generate_barcode.php?text=<?php echo urlencode($barcode_data); ?>" alt="Barcode" class="barcode">
         </div>
     <?php endforeach; ?>
     
@@ -241,7 +264,12 @@ if (!empty($asset_ids)) {
     <?php endif; ?>
     
     <script>
-        // Log tag printing via AJAX (optional)
+        // Log tag printing and add some debugging
+        console.log("print_multiple.php loaded with <?php echo count($assets); ?> assets");
+        <?php foreach ($assets as $asset): ?>
+        console.log("Asset: ID=<?php echo $asset['asset_id']; ?>, Tag=<?php echo htmlspecialchars($asset['asset_tag'] ?? 'No Tag'); ?>");
+        <?php endforeach; ?>
+        
         window.addEventListener('afterprint', function() {
             console.log('Multiple asset tags printed');
         });

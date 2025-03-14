@@ -77,7 +77,7 @@ if($status == 'assigned' && !empty($assignment['expected_return_date']) &&
             </a>
             
             <?php if($assignment['assignment_status'] == 'assigned'): ?>
-                <a href="return.php?id=<?php echo $assignment_id; ?>" class="btn btn-success">
+                <a href="returns.php?id=<?php echo $assignment_id; ?>" class="btn btn-success">
                     <i class="fas fa-undo-alt mr-1"></i>Process Return
                 </a>
                 

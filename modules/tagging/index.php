@@ -40,58 +40,60 @@ $assets_result = mysqli_query($conn, $assets_query);
     </div>
     <div class="card-body">
         <div class="table-responsive">
-            <table class="table table-bordered table-hover" id="assetsTable">
-                <thead>
-                    <tr>
-                        <th><input type="checkbox" id="selectAll"></th>
-                        <th>Asset Tag</th>
-                        <th>Name</th>
-                        <th>Category</th>
-                        <th>Location</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php if(mysqli_num_rows($assets_result) > 0): ?>
-                        <?php while($asset = mysqli_fetch_assoc($assets_result)): ?>
-                            <tr>
-                                <td>
-                                    <input type="checkbox" class="asset-checkbox" value="<?php echo $asset['asset_id']; ?>">
-                                </td>
-                                <td><?php echo htmlspecialchars($asset['asset_tag']); ?></td>
-                                <td><?php echo htmlspecialchars($asset['asset_name']); ?></td>
-                                <td><?php echo htmlspecialchars($asset['category_name'] ?? 'Uncategorized'); ?></td>
-                                <td>
-                                    <?php 
-                                    if($asset['location_id']) {
-                                        echo htmlspecialchars($asset['building']);
-                                        if(!empty($asset['room'])) {
-                                            echo ' - ' . htmlspecialchars($asset['room']);
-                                        }
-                                    } else {
-                                        echo 'Not assigned';
-                                    }
-                                    ?>
-                                </td>
-                                <td><?php echo get_status_badge($asset['status']); ?></td>
-                                <td>
-                                    <a href="generate_tag.php?id=<?php echo $asset['asset_id']; ?>" class="btn btn-sm btn-primary">
-                                        <i class="fas fa-tag"></i> Generate Tag
-                                    </a>
-                                    <a href="print_tag.php?id=<?php echo $asset['asset_id']; ?>" class="btn btn-sm btn-success" target="_blank">
-                                        <i class="fas fa-print"></i> Print
-                                    </a>
-                                </td>
-                            </tr>
-                        <?php endwhile; ?>
-                    <?php else: ?>
+            <form id="assetsForm">
+                <table class="table table-bordered table-hover" id="assetsTable">
+                    <thead>
                         <tr>
-                            <td colspan="7" class="text-center">No assets found. <a href="../inventory/add.php">Add your first asset</a>.</td>
+                            <th><input type="checkbox" id="selectAll"></th>
+                            <th>Asset Tag</th>
+                            <th>Name</th>
+                            <th>Category</th>
+                            <th>Location</th>
+                            <th>Status</th>
+                            <th>Actions</th>
                         </tr>
-                    <?php endif; ?>
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        <?php if(mysqli_num_rows($assets_result) > 0): ?>
+                            <?php while($asset = mysqli_fetch_assoc($assets_result)): ?>
+                                <tr>
+                                    <td>
+                                        <input type="checkbox" class="asset-checkbox" name="asset_ids[]" value="<?php echo $asset['asset_id']; ?>">
+                                    </td>
+                                    <td><?php echo htmlspecialchars($asset['asset_tag'] ?? 'No Tag'); ?></td>
+                                    <td><?php echo htmlspecialchars($asset['asset_name']); ?></td>
+                                    <td><?php echo htmlspecialchars($asset['category_name'] ?? 'Uncategorized'); ?></td>
+                                    <td>
+                                        <?php 
+                                        if($asset['location_id']) {
+                                            echo htmlspecialchars($asset['building']);
+                                            if(!empty($asset['room'])) {
+                                                echo ' - ' . htmlspecialchars($asset['room']);
+                                            }
+                                        } else {
+                                            echo 'Not assigned';
+                                        }
+                                        ?>
+                                    </td>
+                                    <td><?php echo get_status_badge($asset['status']); ?></td>
+                                    <td>
+                                        <a href="generate_tag.php?id=<?php echo $asset['asset_id']; ?>" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-tag"></i> Generate Tag
+                                        </a>
+                                        <a href="print_tag.php?id=<?php echo $asset['asset_id']; ?>" class="btn btn-sm btn-success" target="_blank">
+                                            <i class="fas fa-print"></i> Print
+                                        </a>
+                                    </td>
+                                </tr>
+                            <?php endwhile; ?>
+                        <?php else: ?>
+                            <tr>
+                                <td colspan="7" class="text-center">No assets found. <a href="../inventory/add.php">Add your first asset</a>.</td>
+                            </tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </form>
         </div>
     </div>
     <div class="card-footer">
@@ -104,40 +106,70 @@ $assets_result = mysqli_query($conn, $assets_query);
 <script>
 $(document).ready(function() {
     // Initialize DataTable
-    $('#assetsTable').DataTable({
+    var table = $('#assetsTable').DataTable({
         "order": [[1, "asc"]], // Sort by Asset Tag by default
         "columnDefs": [
             { "orderable": false, "targets": [0, 6] } // Disable sorting on checkbox and actions columns
-        ]
+        ],
+        "drawCallback": function() {
+            // When DataTable redraws (filtering, sorting, pagination), maintain checkbox states
+            updateBatchPrintButton();
+        }
     });
     
-    // Select All checkbox
-    $('#selectAll').change(function() {
-        $('.asset-checkbox').prop('checked', $(this).prop('checked'));
+    // Select All checkbox - use direct click handler
+    $('#selectAll').on('click', function() {
+        var isChecked = $(this).prop('checked');
+        console.log('Select All clicked, checked:', isChecked);
+        
+        // Apply to all visible checkboxes
+        $('.asset-checkbox:visible').prop('checked', isChecked);
+        
+        // Update the button state
         updateBatchPrintButton();
     });
     
-    // Update batch print button state when individual checkboxes change
+    // Individual checkbox click handler - use event delegation to handle dynamically created elements
     $(document).on('change', '.asset-checkbox', function() {
+        console.log('Checkbox changed:', $(this).val(), 'checked:', $(this).prop('checked'));
+        
+        // Update "Select All" checkbox state
+        var totalVisible = $('.asset-checkbox:visible').length;
+        var totalChecked = $('.asset-checkbox:visible:checked').length;
+        
+        $('#selectAll').prop('checked', totalVisible > 0 && totalChecked === totalVisible);
+        
+        // Update button
         updateBatchPrintButton();
     });
     
-    // Batch print button click
-    $('#batchPrintBtn').click(function() {
+    // Batch print button click handler
+    $('#batchPrintBtn').click(function(e) {
+        e.preventDefault();
+        
+        // Use a more direct approach to collect checked boxes
         var selectedAssets = [];
         $('.asset-checkbox:checked').each(function() {
             selectedAssets.push($(this).val());
         });
         
+        console.log('Selected assets for printing:', selectedAssets);
+        
         if(selectedAssets.length > 0) {
-            // Redirect to batch print page with selected IDs
-            window.open('print_multiple.php?ids=' + selectedAssets.join(','), '_blank');
+            // Generate URL and open in new window
+            var url = 'print_multiple.php?ids=' + selectedAssets.join(',');
+            console.log('Opening URL:', url);
+            window.open(url, '_blank');
+        } else {
+            alert('Please select at least one asset to print.');
         }
     });
     
     // Update batch print button state
     function updateBatchPrintButton() {
         var selectedCount = $('.asset-checkbox:checked').length;
+        console.log('Updated button state, selected count:', selectedCount);
+        
         $('#batchPrintBtn').prop('disabled', selectedCount === 0);
         
         if(selectedCount > 0) {
@@ -146,6 +178,9 @@ $(document).ready(function() {
             $('#batchPrintBtn').text('Print Selected Tags');
         }
     }
+    
+    // Initialize button state
+    updateBatchPrintButton();
 });
 </script>
 

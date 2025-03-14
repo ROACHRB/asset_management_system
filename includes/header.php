@@ -1,7 +1,17 @@
 <?php
-// FILE: D:\xampp\htdocs\asset_management_system\includes\header.php
+// Set secure cookie parameters before session starts
+ini_set('session.cookie_httponly', 1); // Prevents JavaScript access to cookies
+if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') {
+    ini_set('session.cookie_secure', 1); // Only transmit cookies over HTTPS
+}
+
 // Initialize the session
 session_start();
+
+// Set security headers to prevent XSS
+header("X-XSS-Protection: 1; mode=block");
+header("X-Content-Type-Options: nosniff");
+header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://stackpath.bootstrapcdn.com https://code.jquery.com; style-src 'self' https://cdnjs.cloudflare.com https://stackpath.bootstrapcdn.com 'unsafe-inline'; font-src 'self' https://cdnjs.cloudflare.com; img-src 'self' data:;");
 
 // Check if the user is logged in, if not redirect to login page
 if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true){
@@ -217,13 +227,13 @@ require_once $_SERVER['DOCUMENT_ROOT'] . '/asset_management_system/includes/func
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-toggle="dropdown">
                         <i class="fas fa-user-circle mr-1"></i>
-                        <?php echo htmlspecialchars($_SESSION["username"]); ?>
+                        <?php echo htmlspecialchars($_SESSION["username"], ENT_QUOTES, 'UTF-8'); ?>
                         <span class="badge badge-<?php 
                             echo ($_SESSION['role'] == 'admin' ? 'danger' : 
                                 ($_SESSION['role'] == 'manager' ? 'warning' : 
                                 ($_SESSION['role'] == 'staff' ? 'info' : 'secondary'))); 
                         ?> ml-1">
-                            <?php echo ucfirst($_SESSION['role']); ?>
+                            <?php echo ucfirst(htmlspecialchars($_SESSION['role'], ENT_QUOTES, 'UTF-8')); ?>
                         </span>
                     </a>
                     <div class="dropdown-menu dropdown-menu-right">
@@ -244,7 +254,7 @@ require_once $_SERVER['DOCUMENT_ROOT'] . '/asset_management_system/includes/func
         <!-- Display error messages if any -->
         <?php if(isset($_SESSION['error'])): ?>
         <div class="alert alert-danger alert-dismissible fade show">
-            <i class="fas fa-exclamation-triangle mr-2"></i><?php echo $_SESSION['error']; ?>
+            <i class="fas fa-exclamation-triangle mr-2"></i><?php echo htmlspecialchars($_SESSION['error'], ENT_QUOTES, 'UTF-8'); ?>
             <button type="button" class="close" data-dismiss="alert">&times;</button>
         </div>
         <?php unset($_SESSION['error']); endif; ?>
@@ -252,9 +262,9 @@ require_once $_SERVER['DOCUMENT_ROOT'] . '/asset_management_system/includes/func
         <!-- Display success messages if any -->
         <?php if(isset($_SESSION['success'])): ?>
         <div class="alert alert-success alert-dismissible fade show">
-            <i class="fas fa-check-circle mr-2"></i><?php echo $_SESSION['success']; ?>
+            <i class="fas fa-check-circle mr-2"></i><?php echo htmlspecialchars($_SESSION['success'], ENT_QUOTES, 'UTF-8'); ?>
             <button type="button" class="close" data-dismiss="alert">&times;</button>
         </div>
         <?php unset($_SESSION['success']); endif; ?>
         
-        <!-- Page content will be inserted here --> 
+        <!-- Page content will be inserted here -->
