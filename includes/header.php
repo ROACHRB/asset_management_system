@@ -52,8 +52,8 @@ require_once $_SERVER['DOCUMENT_ROOT'] . '/asset_management_system/includes/func
                     </a>
                 </li>
 
-                <!-- My Assets - Only shown for users with 'user' role -->
-                <?php if($_SESSION['role'] == 'user'): ?>
+                <!-- My Assets - Only shown for non-admin users -->
+                <?php if(isset($_SESSION['role']) && $_SESSION['role'] !== 'admin'): ?>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="myAssetsDropdown" role="button" data-toggle="dropdown">
                         <i class="fas fa-laptop mr-1"></i>My Assets

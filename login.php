@@ -71,6 +71,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         mysqli_stmt_close($update_stmt);
                     }
 
+                    // Log the login activity
+                    $user_id = $row["user_id"];
+                    $activity_type = 'login';
+                    $description = 'User logged in to the system';
+                    $ip_address = $_SERVER['REMOTE_ADDR'];
+                    
+                    $log_query = "INSERT INTO user_activity_logs (user_id, activity_type, description, ip_address) 
+                                VALUES (?, ?, ?, ?)";
+                    
+                    if ($log_stmt = mysqli_prepare($conn, $log_query)) {
+                        mysqli_stmt_bind_param($log_stmt, "isss", $user_id, $activity_type, $description, $ip_address);
+                        mysqli_stmt_execute($log_stmt);
+                        mysqli_stmt_close($log_stmt);
+                    }
+
                     // Redirect to dashboard
                     header("Location: index.php");
                     exit;
