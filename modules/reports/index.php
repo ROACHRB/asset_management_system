@@ -66,6 +66,50 @@ include_once "../../includes/header.php";
         </div>
     </div>
 
+    <!-- Audit Report Card - NEW -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5><i class="fas fa-clipboard-check mr-2"></i>Audit Reports</h5>
+            </div>
+            <div class="card-body">
+                <p>View and analyze physical inventory audit results and discrepancies.</p>
+                <div class="list-group">
+                    <a href="audit_list.php" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">Audit History</h6>
+                            <small><i class="fas fa-chevron-right"></i></small>
+                        </div>
+                        <small class="text-muted">View and manage all audit records</small>
+                    </a>
+                    <a href="audit_summary.php" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">Audit Summary</h6>
+                            <small><i class="fas fa-chevron-right"></i></small>
+                        </div>
+                        <small class="text-muted">Summary statistics and charts</small>
+                    </a>
+                    <a href="audit_discrepancy.php" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">Discrepancy Analysis</h6>
+                            <small><i class="fas fa-chevron-right"></i></small>
+                        </div>
+                        <small class="text-muted">Missing and misplaced asset reports</small>
+                    </a>
+                    <?php if(has_permission('conduct_audits')): ?>
+                    <a href="audit_conduct.php" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">Conduct Audit</h6>
+                            <small><i class="fas fa-chevron-right"></i></small>
+                        </div>
+                        <small class="text-muted">Create or continue an inventory audit</small>
+                    </a>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Maintenance Report Card -->
     <div class="col-md-6 mb-4">
         <div class="card h-100">

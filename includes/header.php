@@ -166,40 +166,38 @@ require_once $_SERVER['DOCUMENT_ROOT'] . '/asset_management_system/includes/func
 
                 <!-- Reports - requires generate_reports permission -->
                 <?php if(has_permission('generate_reports')): ?>
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="reportsDropdown" role="button" data-toggle="dropdown">
-                        <i class="fas fa-chart-bar mr-1"></i>Reports
-                    </a>
-                    <div class="dropdown-menu">
-                        <a class="dropdown-item" href="/asset_management_system/modules/reports/index.php">
-                            <i class="fas fa-file mr-2"></i>Generate Reports
-                        </a>
-                        <a class="dropdown-item" href="/asset_management_system/modules/reports/inventory_report.php">
-                            <i class="fas fa-boxes mr-2"></i>Inventory Report
-                        </a>
-                        <a class="dropdown-item" href="/asset_management_system/modules/reports/assignment_report.php">
-                            <i class="fas fa-users mr-2"></i>Assignment Report
-                        </a>
-                    </div>
-                </li>
-                <?php endif; ?>
+<li class="nav-item dropdown">
+    <a class="nav-link dropdown-toggle" href="#" id="reportsDropdown" role="button" data-toggle="dropdown">
+        <i class="fas fa-chart-bar mr-1"></i>Reports
+    </a>
+    <div class="dropdown-menu">
+        <a class="dropdown-item" href="/asset_management_system/modules/reports/index.php">
+            <i class="fas fa-file mr-2"></i>Generate Reports
+        </a>
+        <a class="dropdown-item" href="/asset_management_system/modules/reports/inventory_report.php">
+            <i class="fas fa-boxes mr-2"></i>Inventory Report
+        </a>
+        <a class="dropdown-item" href="/asset_management_system/modules/reports/assignment_report.php">
+            <i class="fas fa-users mr-2"></i>Assignment Report
+        </a>
+        <!-- New Audit Reports Section -->
+        <div class="dropdown-divider"></div>
+        <h6 class="dropdown-header">Audit Reports</h6>
+        <a class="dropdown-item" href="/asset_management_system/modules/reports/audit_list.php">
+            <i class="fas fa-clipboard-check mr-2"></i>Audit History
+        </a>
+        <a class="dropdown-item" href="/asset_management_system/modules/reports/audit_summary.php">
+            <i class="fas fa-chart-pie mr-2"></i>Audit Summary
+        </a>
+        <?php if(has_permission('conduct_audits')): ?>
+        <a class="dropdown-item" href="/asset_management_system/modules/reports/audit_conduct.php">
+            <i class="fas fa-tasks mr-2"></i>Conduct Audit
+        </a>
+        <?php endif; ?>
+    </div>
+</li>
+<?php endif; ?>
 
-                <!-- Audits - requires conduct_audits permission -->
-                <?php if(has_permission('conduct_audits')): ?>
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="auditsDropdown" role="button" data-toggle="dropdown">
-                        <i class="fas fa-clipboard-check mr-1"></i>Audits
-                    </a>
-                    <div class="dropdown-menu">
-                        <a class="dropdown-item" href="/asset_management_system/modules/audits/index.php">
-                            <i class="fas fa-list mr-2"></i>View Audits
-                        </a>
-                        <a class="dropdown-item" href="/asset_management_system/modules/audits/new.php">
-                            <i class="fas fa-plus mr-2"></i>New Audit
-                        </a>
-                    </div>
-                </li>
-                <?php endif; ?>
 
                 <!-- User Management - requires manage_users permission -->
                 <?php if(has_permission('manage_users')): ?>

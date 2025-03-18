@@ -57,6 +57,7 @@ if (function_exists('log_asset_action')) {
 
 // Create QR code text - make sure it's not empty
 $qr_text = !empty($asset['qr_code']) ? $asset['qr_code'] : "asset:{$asset_id}:{$asset['asset_tag']}";
+$barcode_text = $asset['barcode'] ?? $asset['asset_tag'];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -140,6 +141,7 @@ $qr_text = !empty($asset['qr_code']) ? $asset['qr_code'] : "asset:{$asset_id}:{$
             width: 50mm;
             height: 10mm;
             margin: 0 auto;
+            text-align: center;
         }
         
         /* Print instructions */
@@ -172,6 +174,9 @@ $qr_text = !empty($asset['qr_code']) ? $asset['qr_code'] : "asset:{$asset_id}:{$
             background-color: #45a049;
         }
     </style>
+    <!-- Include Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
     <!-- Print Instructions -->
@@ -199,9 +204,8 @@ $qr_text = !empty($asset['qr_code']) ? $asset['qr_code'] : "asset:{$asset_id}:{$
         </div>
         
         <div class="code-container">
-            <!-- QR Code using Google Chart API with double URL encoding for safety -->
-            <img src="https://chart.googleapis.com/chart?chs=150x150&cht=qr&chl=<?php echo rawurlencode($qr_text); ?>&choe=UTF-8" 
-                 alt="QR Code" class="qr-code">
+            <!-- QR Code container -->
+            <div id="qrcode" class="qr-code"></div>
             
             <div style="flex-grow: 1; text-align: center; padding-top: 5mm;">
                 <!-- Asset ID -->
@@ -212,11 +216,37 @@ $qr_text = !empty($asset['qr_code']) ? $asset['qr_code'] : "asset:{$asset_id}:{$
             </div>
         </div>
         
-        <!-- Barcode -->
-        <img src="generate_barcode.php?text=<?php echo urlencode($asset['barcode'] ?? $asset['asset_tag']); ?>" alt="Barcode" class="barcode">
+        <!-- Barcode - using JsBarcode -->
+        <div class="barcode">
+            <svg id="barcode"></svg>
+        </div>
     </div>
     
     <script>
+        // Generate QR code and barcode when the page loads
+        window.onload = function() {
+            // Generate QR code
+            new QRCode(document.getElementById("qrcode"), {
+                text: "<?php echo addslashes($qr_text); ?>",
+                width: 75,
+                height: 75,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H  // High error correction
+            });
+            
+            // Generate barcode
+            JsBarcode("#barcode", "<?php echo addslashes($barcode_text); ?>", {
+                format: "CODE128",
+                lineColor: "#000",
+                width: 2,
+                height: 40,
+                displayValue: true,
+                fontSize: 12,
+                textMargin: 2
+            });
+        };
+
         // Log tag printing via AJAX (optional)
         window.addEventListener('afterprint', function() {
             // Can add AJAX call here to log the print action
